@@ -16,6 +16,7 @@
     "db:init:simple": "prisma generate && prisma db push --accept-data-loss && tsx prisma/seed.ts",
     "db:test": "node scripts/test-connection.js",
     "db:fix-url": "node scripts/fix-env.js",
+    "db:create-admin": "node scripts/create-admin-only.js",
     "postinstall": "prisma generate"
   },
   "prisma": {
