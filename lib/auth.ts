@@ -63,7 +63,17 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await authenticateUser(credentials.email, credentials.password);
-        return user;
+        if (!user) {
+          return null;
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          role: user.role as UserRole,
+          nom: user.nom,
+          prenom: user.prenom,
+        };
       },
     }),
   ],
