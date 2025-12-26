@@ -12,6 +12,10 @@
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
+    "db:init": "node scripts/init-db.js",
+    "db:init:simple": "prisma generate && prisma db push --accept-data-loss && tsx prisma/seed.ts",
+    "db:test": "node scripts/test-connection.js",
+    "db:fix-url": "node scripts/fix-env.js",
     "postinstall": "prisma generate"
   },
   "prisma": {

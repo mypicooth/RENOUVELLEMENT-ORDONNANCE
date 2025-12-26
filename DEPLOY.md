@@ -80,9 +80,25 @@ Railway peut utiliser SQLite, mais la base de données sera réinitialisée à c
 
 #### Option 2 : Migrer vers PostgreSQL (recommandé)
 
-1. Dans Railway, cliquez sur "New" → "Database" → "PostgreSQL"
-2. Railway créera automatiquement une base PostgreSQL
-3. Copiez l'URL de connexion (variable `DATABASE_URL`)
+**Méthode A : Base de données Railway**
+
+1. Dans votre projet Railway, cliquez sur **"+ New"** ou **"+ Add Service"** (bouton en haut à droite)
+2. Sélectionnez **"Database"** ou **"PostgreSQL"** dans le menu
+3. Railway créera automatiquement une base PostgreSQL
+4. La variable `DATABASE_URL` sera automatiquement ajoutée à votre projet
+5. Si elle n'apparaît pas automatiquement, allez dans **"Variables"** et vérifiez qu'elle est bien là
+
+**Si vous ne trouvez pas l'option "Database" :**
+- Essayez de créer un nouveau projet vide, puis ajoutez la base de données
+- Ou utilisez l'alternative Supabase ci-dessous
+
+**Méthode B : Utiliser Supabase (Alternative gratuite)**
+
+1. Créez un compte sur [supabase.com](https://supabase.com) (gratuit)
+2. Créez un nouveau projet
+3. Allez dans **Settings** → **Database**
+4. Copiez la **Connection String** (URI) sous "Connection string"
+5. Dans Railway, ajoutez cette URL dans les variables d'environnement comme `DATABASE_URL`
 
 ### 5. Configurer les variables d'environnement
 
