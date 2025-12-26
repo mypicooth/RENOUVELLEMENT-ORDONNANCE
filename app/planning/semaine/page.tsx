@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
 import { RenewalEventStatus } from "@/lib/types";
@@ -57,12 +57,7 @@ export default function PlanningSemainePage() {
   const [smsTemplates, setSmsTemplates] = useState<SmsTemplate[]>([]);
   const [selectedTemplates, setSelectedTemplates] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    loadWeekRenewals();
-    loadSmsTemplates();
-  }, [currentWeek]);
-
-  const loadSmsTemplates = async () => {
+  const loadSmsTemplates = useCallback(async () => {
     try {
       const res = await fetch("/api/templates-sms");
       if (res.ok) {
@@ -72,9 +67,9 @@ export default function PlanningSemainePage() {
     } catch (error) {
       console.error("Erreur chargement templates SMS:", error);
     }
-  };
+  }, []);
 
-  const loadWeekRenewals = async () => {
+  const loadWeekRenewals = useCallback(async () => {
     setLoading(true);
     try {
       const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
@@ -96,7 +91,12 @@ export default function PlanningSemainePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentWeek]);
+
+  useEffect(() => {
+    loadWeekRenewals();
+    loadSmsTemplates();
+  }, [loadWeekRenewals, loadSmsTemplates]);
 
   const updateStatut = async (id: string, newStatut: RenewalEventStatus) => {
     try {
@@ -209,7 +209,7 @@ export default function PlanningSemainePage() {
                 onClick={() => setCurrentWeek(new Date())}
                 className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
               >
-                Aujourd'hui
+                Aujourd&apos;hui
               </button>
               <button
                 onClick={() => setCurrentWeek(addDays(currentWeek, 7))}

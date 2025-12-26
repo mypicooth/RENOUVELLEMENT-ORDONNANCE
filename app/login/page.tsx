@@ -44,7 +44,7 @@ export default function LoginPage() {
             Pharmacie Saint-Laurent
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Connexion à l'application de renouvellement d'ordonnances
+            Connexion à l&apos;application de renouvellement d&apos;ordonnances
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

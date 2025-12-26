@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
@@ -66,11 +66,24 @@ export default function PatientDetailPage() {
   const [saving, setSaving] = useState(false);
   const isAdmin = session?.user.role === UserRole.ADMIN;
 
-  useEffect(() => {
-    if (params.id) {
-      loadPatient();
+  const loadPatient = useCallback(async () => {
+    if (!params.id) return;
+    try {
+      const res = await fetch(`/api/patients/${params.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPatient(data);
+      }
+    } catch (error) {
+      console.error("Erreur chargement patient:", error);
+    } finally {
+      setLoading(false);
     }
   }, [params.id]);
+
+  useEffect(() => {
+    loadPatient();
+  }, [loadPatient]);
 
   useEffect(() => {
     if (patient) {
@@ -83,20 +96,6 @@ export default function PatientDetailPage() {
       });
     }
   }, [patient]);
-
-  const loadPatient = async () => {
-    try {
-      const res = await fetch(`/api/patients/${params.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setPatient(data);
-      }
-    } catch (error) {
-      console.error("Erreur chargement patient:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -312,7 +311,7 @@ export default function PatientDetailPage() {
                       className="mt-1 mr-3"
                     />
                     <span className="text-sm text-gray-700">
-                      Le patient autorise la conservation de l'ordonnance + l'envoi de SMS *
+                      Le patient autorise la conservation de l&apos;ordonnance + l&apos;envoi de SMS *
                     </span>
                   </label>
                 </div>

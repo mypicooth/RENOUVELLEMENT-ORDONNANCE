@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
@@ -28,11 +28,7 @@ export default function PatientsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    loadPatients();
-  }, [search]);
-
-  const loadPatients = async () => {
+  const loadPatients = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -47,7 +43,11 @@ export default function PatientsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [search]);
+
+  useEffect(() => {
+    loadPatients();
+  }, [loadPatients]);
 
   return (
     <ProtectedRoute>

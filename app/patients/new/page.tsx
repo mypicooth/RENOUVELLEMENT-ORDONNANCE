@@ -146,7 +146,7 @@ export default function NewPatientPage() {
                     className="mt-1 mr-3"
                   />
                   <span className="text-sm text-gray-700">
-                    Le patient autorise la conservation de l'ordonnance + l'envoi de SMS *
+                    Le patient autorise la conservation de l&apos;ordonnance + l&apos;envoi de SMS *
                   </span>
                 </label>
               </div>

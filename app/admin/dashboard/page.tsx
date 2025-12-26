@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
 import { UserRole } from "@/lib/types";
@@ -44,11 +44,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<"today" | "week" | "month">("today");
 
-  useEffect(() => {
-    loadKpiData();
-  }, [period]);
-
-  const loadKpiData = async () => {
+  const loadKpiData = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/kpi?period=${period}`);
@@ -61,7 +57,11 @@ export default function AdminDashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period]);
+
+  useEffect(() => {
+    loadKpiData();
+  }, [loadKpiData]);
 
   if (loading || !kpiData) {
     return (
@@ -88,7 +88,7 @@ export default function AdminDashboardPage() {
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                Aujourd'hui
+                Aujourd&apos;hui
               </button>
               <button
                 onClick={() => setPeriod("week")}
