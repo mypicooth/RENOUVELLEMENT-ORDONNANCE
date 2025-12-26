@@ -1,0 +1,123 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String
+  role          String   @default("STAFF") // ADMIN, STAFF
+  nom           String?
+  prenom        String?
+  actif         Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  createdCycles PrescriptionCycle[] @relation("CreatedBy")
+  sentSms       SmsLog[]            @relation("SentBy")
+
+  @@map("users")
+}
+
+model Patient {
+  id                  String   @id @default(cuid())
+  nom                 String
+  prenom              String
+  telephone_normalise String
+  date_recrutement    DateTime @default(now())
+  consentement        Boolean  @default(false)
+  notes               String?
+  actif               Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  cycles PrescriptionCycle[]
+
+  @@map("patients")
+}
+
+model PrescriptionCycle {
+  id                      String   @id @default(cuid())
+  patient_id              String
+  date_premiere_delivrance DateTime
+  nb_renouvellements      Int
+  intervalle_jours        Int      @default(21)
+  statut                  String   @default("ACTIF") // ACTIF, TERMINE, ANNULE
+  created_by              String
+  created_at              DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  patient     Patient          @relation(fields: [patient_id], references: [id])
+  creator     User             @relation("CreatedBy", fields: [created_by], references: [id])
+  renewals    RenewalEvent[]
+  smsLogs     SmsLog[]
+
+  @@map("prescription_cycles")
+}
+
+model RenewalEvent {
+  id                    String    @id @default(cuid())
+  prescription_cycle_id String
+  index                 Int       // 0 pour R0, 1 pour R1, etc.
+  date_theorique        DateTime
+  statut                String    @default("A_PREPARER") // A_PREPARER, EN_PREPARATION, PRET, SMS_ENVOYE, TERMINE, ANNULE
+  date_preparation      DateTime?
+  date_sms              DateTime?
+  date_termine          DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  prescriptionCycle PrescriptionCycle @relation(fields: [prescription_cycle_id], references: [id])
+  smsLogs            SmsLog[]
+
+  @@unique([prescription_cycle_id, index])
+  @@map("renewal_events")
+  @@index([date_theorique])
+  @@index([statut])
+}
+
+model SmsTemplate {
+  id          String   @id @default(cuid())
+  code        String   @unique // RENOUVELLEMENT_PRET, etc.
+  libelle     String
+  message     String   // ≤ 160 caractères
+  actif       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  smsLogs SmsLog[]
+
+  @@map("sms_templates")
+}
+
+model SmsLog {
+  id                    String   @id @default(cuid())
+  renewal_event_id      String?
+  prescription_cycle_id String?
+  template_id           String?
+  telephone             String
+  message               String
+  statut                String   // SUCCESS, ERROR
+  api_id                String?  // ID retourné par TextingHouse
+  erreur                String?
+  sent_by               String
+  sent_at               DateTime @default(now())
+
+  renewalEvent      RenewalEvent?      @relation(fields: [renewal_event_id], references: [id])
+  prescriptionCycle PrescriptionCycle? @relation(fields: [prescription_cycle_id], references: [id])
+  template           SmsTemplate?       @relation(fields: [template_id], references: [id])
+  sender             User                @relation("SentBy", fields: [sent_by], references: [id])
+
+  @@map("sms_logs")
+  @@index([sent_at])
+  @@index([statut])
+}
+
