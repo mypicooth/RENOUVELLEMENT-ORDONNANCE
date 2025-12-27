@@ -53,6 +53,40 @@ body {
     display: none !important;
   }
   
+  /* Masquer la sidebar du Layout et le menu mobile */
+  .no-print,
+  [class*="sidebar"],
+  [class*="Sidebar"],
+  [class*="mobile-menu"],
+  .md\:hidden {
+    display: none !important;
+  }
+  
+  /* Ajuster le contenu principal pour qu'il prenne toute la largeur */
+  .min-h-screen.flex {
+    display: block !important;
+  }
+  
+  .min-h-screen.flex > div:first-child {
+    display: none !important;
+  }
+  
+  main,
+  [class*="main"],
+  [class*="content"],
+  .flex-1 {
+    margin: 0 !important;
+    padding: 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  /* Masquer les marges et espacements inutiles */
+  .md\:ml-0,
+  .md\:mt-0 {
+    margin: 0 !important;
+  }
+  
   /* Améliorer l'affichage des tableaux */
   table {
     width: 100%;

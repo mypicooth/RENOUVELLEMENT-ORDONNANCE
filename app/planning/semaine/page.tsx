@@ -181,6 +181,25 @@ export default function PlanningSemainePage() {
     <ProtectedRoute>
       <Layout>
         <div className="px-4 sm:px-6 lg:px-8">
+          {/* En-tête d'impression */}
+          <div className="hidden print:block print:mb-4 print:border-b print:border-gray-300 print:pb-4">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                Pharmacie Saint Laurent
+              </h1>
+              <p className="text-sm text-gray-600 mb-1">
+                73 rue Romain Rolland, 97419 La Possession
+              </p>
+              <h2 className="text-xl font-semibold text-gray-900 mt-2">
+                Planning de la semaine
+              </h2>
+              <p className="text-sm text-gray-600">
+                {format(weekStart, "d MMMM", { locale: fr })} -{" "}
+                {format(addDays(weekStart, 6), "d MMMM yyyy", { locale: fr })}
+              </p>
+            </div>
+          </div>
+
           <div className="sm:flex sm:items-center sm:justify-between mb-6 no-print">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
@@ -201,27 +220,27 @@ export default function PlanningSemainePage() {
             <div className="mt-4 sm:mt-0 flex gap-2">
               <button
                 onClick={() => setCurrentWeek(addDays(currentWeek, -7))}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 no-print"
               >
                 Semaine précédente
               </button>
               <button
                 onClick={() => setCurrentWeek(new Date())}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 no-print"
               >
                 Aujourd&apos;hui
               </button>
               <button
                 onClick={() => setCurrentWeek(addDays(currentWeek, 7))}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 no-print"
               >
                 Semaine suivante
               </button>
               <button
                 onClick={handlePrint}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 no-print"
               >
-                Imprimer
+                🖨️ Imprimer
               </button>
             </div>
           </div>
@@ -287,7 +306,7 @@ export default function PlanningSemainePage() {
 
           {selectedDate && (
             <div className="mt-6 bg-white shadow rounded-lg p-6 print-page">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 no-print">
                 <h2 className="text-lg font-semibold">
                   {format(selectedDate, "EEEE d MMMM yyyy", { locale: fr })}
                 </h2>
@@ -296,6 +315,12 @@ export default function PlanningSemainePage() {
                     ⏩ Date future
                   </span>
                 )}
+              </div>
+              {/* En-tête pour l'impression du tableau de détails */}
+              <div className="hidden print:block print:mb-4 print:border-b print:border-gray-300 print:pb-4">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Détails - {format(selectedDate, "EEEE d MMMM yyyy", { locale: fr })}
+                </h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
