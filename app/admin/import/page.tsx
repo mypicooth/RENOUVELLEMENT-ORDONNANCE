@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
@@ -19,7 +19,7 @@ interface ImportResult {
   };
 }
 
-export default function ImportPage() {
+function ImportPageContent() {
   const searchParams = useSearchParams();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -350,6 +350,17 @@ export default function ImportPage() {
             )}
           </div>
         </div>
+    </>
+  );
+}
+
+export default function ImportPage() {
+  return (
+    <ProtectedRoute requiredRole={UserRole.ADMIN}>
+      <Layout>
+        <Suspense fallback={<div className="text-center py-8">Chargement...</div>}>
+          <ImportPageContent />
+        </Suspense>
       </Layout>
     </ProtectedRoute>
   );
