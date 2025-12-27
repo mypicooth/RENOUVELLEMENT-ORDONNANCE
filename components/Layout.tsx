@@ -28,118 +28,126 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo et titre */}
-            <div className="flex items-center flex-shrink-0">
-              <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">
-                Pharmacie Saint-Laurent
-              </h1>
-            </div>
-
-            {/* Menu desktop */}
-            <div className="hidden md:flex md:flex-1 md:justify-center md:ml-6">
-              <div className="flex space-x-4 lg:space-x-8">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`inline-flex items-center px-2 sm:px-3 py-2 border-b-2 text-xs sm:text-sm font-medium whitespace-nowrap ${
-                      pathname === link.href
-                        ? "border-blue-500 text-gray-900"
-                        : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            {/* Actions utilisateur desktop */}
-            <div className="hidden md:flex md:items-center md:space-x-3 md:ml-4">
-              {isAdmin && (
-                <a
-                  href="/api/admin/export-csv"
-                  download
-                  className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 whitespace-nowrap"
-                >
-                  Export CSV
-                </a>
-              )}
-              <div className="flex items-center space-x-2">
-                <span className="text-xs sm:text-sm text-gray-700 truncate max-w-[120px] sm:max-w-none">
-                  {session?.user.email}
-                </span>
-                {isAdmin && (
-                  <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded whitespace-nowrap">
-                    Admin
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className="text-xs sm:text-sm text-gray-500 hover:text-gray-700 whitespace-nowrap"
-              >
-                Déconnexion
-              </button>
-            </div>
-
-            {/* Bouton hamburger mobile */}
-            <div className="md:hidden flex items-center space-x-2">
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
-                aria-expanded="false"
-              >
-                <span className="sr-only">Ouvrir le menu</span>
-                {mobileMenuOpen ? (
-                  <svg
-                    className="block h-6 w-6"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    className="block h-6 w-6"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 6h16M4 12h16M4 18h16"
-                    />
-                  </svg>
-                )}
-              </button>
-            </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <div className="hidden md:flex md:flex-shrink-0">
+        <div className="flex flex-col w-64 bg-white border-r border-gray-200">
+          {/* Logo */}
+          <div className="flex items-center h-16 px-4 border-b border-gray-200">
+            <h1 className="text-lg font-bold text-gray-900">
+              Pharmacie Saint-Laurent
+            </h1>
           </div>
 
-          {/* Menu mobile */}
-          {mobileMenuOpen && (
-            <div className="md:hidden border-t border-gray-200">
-              <div className="px-2 pt-2 pb-3 space-y-1">
+          {/* Navigation */}
+          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                  pathname === link.href
+                    ? "bg-blue-50 text-blue-700 border-l-4 border-blue-500"
+                    : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
+          {/* User section */}
+          <div className="border-t border-gray-200 p-4 space-y-3">
+            {isAdmin && (
+              <a
+                href="/api/admin/export-csv"
+                download
+                className="flex items-center px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-md"
+              >
+                Export CSV
+              </a>
+            )}
+            <div className="px-3 py-2">
+              <div className="text-sm font-medium text-gray-900 truncate">
+                {session?.user.email}
+              </div>
+              {isAdmin && (
+                <span className="mt-1 inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+                  Admin
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md"
+            >
+              Déconnexion
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile menu button */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
+        <div className="flex items-center justify-between h-16 px-4">
+          <h1 className="text-lg font-bold text-gray-900">
+            Pharmacie Saint-Laurent
+          </h1>
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="inline-flex items-center justify-center p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+            aria-expanded="false"
+          >
+            <span className="sr-only">Ouvrir le menu</span>
+            {mobileMenuOpen ? (
+              <svg
+                className="block h-6 w-6"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            ) : (
+              <svg
+                className="block h-6 w-6"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
+
+        {/* Mobile menu overlay */}
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-40 md:hidden">
+            <div
+              className="fixed inset-0 bg-gray-600 bg-opacity-75"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <div className="fixed inset-y-0 left-0 flex flex-col w-64 bg-white shadow-xl">
+              <div className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
                 {navLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`block px-3 py-2 rounded-md text-base font-medium ${
+                    className={`flex items-center px-3 py-2 text-base font-medium rounded-md ${
                       pathname === link.href
                         ? "bg-blue-50 text-blue-700 border-l-4 border-blue-500"
                         : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
@@ -149,13 +157,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </Link>
                 ))}
               </div>
-              <div className="px-2 pt-4 pb-3 border-t border-gray-200 space-y-2">
+              <div className="border-t border-gray-200 p-4 space-y-2">
                 {isAdmin && (
                   <a
                     href="/api/admin/export-csv"
                     download
                     onClick={() => setMobileMenuOpen(false)}
-                    className="block px-3 py-2 rounded-md text-base font-medium text-blue-600 hover:bg-blue-50"
+                    className="flex items-center px-3 py-2 text-base font-medium text-blue-600 hover:bg-blue-50 rounded-md"
                   >
                     Export CSV
                   </a>
@@ -175,19 +183,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     setMobileMenuOpen(false);
                     signOut({ callbackUrl: "/login" });
                   }}
-                  className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50"
+                  className="w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-md"
                 >
                   Déconnexion
                 </button>
               </div>
             </div>
-          )}
-        </div>
-      </nav>
-      <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
-        {children}
-      </main>
-    </div>
-  );
-}
+          </div>
+        )}
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col md:ml-0">
+        <main className="flex-1 py-4 sm:py-6 px-4 sm:px-6 lg:px-8 md:mt-0 mt-16">
+          {children}
+        </main>
+      </div>
 
