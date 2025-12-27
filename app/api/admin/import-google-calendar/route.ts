@@ -69,7 +69,8 @@ export async function POST(request: NextRequest) {
           const event = new ICAL.Event(vevent);
           const summary = event.summary || "";
           const startDate = event.startDate.toJSDate();
-          const description = vevent.getFirstPropertyValue("description") || "";
+          const descriptionValue = vevent.getFirstPropertyValue("description");
+          const description: string = typeof descriptionValue === "string" ? descriptionValue : (descriptionValue ? String(descriptionValue) : "");
           
           // Extraire la règle de récurrence (RRULE)
           const rruleProp = vevent.getFirstProperty("rrule");
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
           events.push({
             subject: summary,
             startDate,
-            description,
+            description: description || undefined,
             recurrence: rrule ? JSON.stringify(rrule) : undefined,
             rrule: rrule ? { ...rrule, nbOccurrences, intervalleJours } : undefined,
           });
