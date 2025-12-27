@@ -36,6 +36,9 @@ export default function TerminatedPatientsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedPatients, setSelectedPatients] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<string>("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [smsTemplates, setSmsTemplates] = useState<Array<{ id: string; code: string; libelle: string; message: string }>>([]);
   const isAdmin = session?.user.role === UserRole.ADMIN;
 
   const loadPatients = useCallback(async () => {
@@ -55,7 +58,20 @@ export default function TerminatedPatientsPage() {
 
   useEffect(() => {
     loadPatients();
+    loadSmsTemplates();
   }, [loadPatients]);
+
+  const loadSmsTemplates = useCallback(async () => {
+    try {
+      const res = await fetch("/api/templates-sms");
+      if (res.ok) {
+        const data = await res.json();
+        setSmsTemplates(data);
+      }
+    } catch (error) {
+      console.error("Erreur chargement templates SMS:", error);
+    }
+  }, []);
 
   const toggleSelectPatient = (patientId: string) => {
     const newSelected = new Set(selectedPatients);
@@ -75,181 +91,97 @@ export default function TerminatedPatientsPage() {
     }
   };
 
-  const handleBulkSendSms = async () => {
-    const selected = Array.from(selectedPatients);
-    const patientsWithConsent = patients.filter(
-      (p) => selected.includes(p.id) && p.consentement
-    );
-
-    if (patientsWithConsent.length === 0) {
-      alert("Aucun patient sélectionné avec consentement SMS");
-      return;
-    }
-
-    if (!confirm(`Envoyer un SMS à ${patientsWithConsent.length} patient(s) ?`)) {
-      return;
-    }
-
-    setBulkActionLoading(true);
-    try {
-      const results: Array<{ success: boolean; patientName: string; error?: string }> = [];
-
-      for (const patient of patientsWithConsent) {
-        try {
-          // Trouver le dernier renouvellement terminé pour envoyer un SMS de suivi
-          const lastRenewal = patient.cycles
-            ?.flatMap((cycle) => cycle.renewals || [])
-            .filter((r) => r.statut === "TERMINE")
-            .sort((a, b) => new Date(b.date_theorique).getTime() - new Date(a.date_theorique).getTime())[0];
-
-          if (lastRenewal) {
-            const smsRes = await fetch("/api/sms/send", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ renewalEventId: lastRenewal.id }),
-            });
-
-            const smsData = await smsRes.json();
-            if (smsData.success) {
-              results.push({
-                success: true,
-                patientName: `${patient.prenom} ${patient.nom}`,
-              });
-            } else {
-              results.push({
-                success: false,
-                patientName: `${patient.prenom} ${patient.nom}`,
-                error: smsData.error || "Erreur inconnue",
-              });
-            }
-          } else {
-            results.push({
-              success: false,
-              patientName: `${patient.prenom} ${patient.nom}`,
-              error: "Aucun renouvellement trouvé",
-            });
-          }
-        } catch (error) {
-          results.push({
-            success: false,
-            patientName: `${patient.prenom} ${patient.nom}`,
-            error: error instanceof Error ? error.message : "Erreur inconnue",
-          });
-        }
-      }
-
-      const successCount = results.filter((r) => r.success).length;
-      const failCount = results.length - successCount;
-
-      if (failCount > 0) {
-        const failedPatients = results
-          .filter((r) => !r.success)
-          .map((r) => `- ${r.patientName}: ${r.error || "Erreur"}`)
-          .join("\n");
-        alert(`Résultats :\n${successCount} succès\n${failCount} échec(s)\n\nÉchecs :\n${failedPatients}`);
-      } else {
-        alert(`✅ ${successCount} SMS envoyé(s) avec succès`);
-      }
-
-      setSelectedPatients(new Set());
-      loadPatients();
-    } catch (error) {
-      console.error("Erreur envoi SMS en bloc:", error);
-      alert("Erreur lors de l'envoi des SMS");
-    } finally {
-      setBulkActionLoading(false);
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (!isAdmin) {
-      alert("Seuls les administrateurs peuvent supprimer des patients");
+  const handleBulkAction = async () => {
+    if (!selectedAction) {
+      alert("Veuillez sélectionner une action");
       return;
     }
 
     const selected = Array.from(selectedPatients);
-    const selectedPatientsData = patients.filter((p) => selected.includes(p.id));
-
-    if (selectedPatientsData.length === 0) {
+    if (selected.length === 0) {
       alert("Aucun patient sélectionné");
       return;
     }
 
-    const firstConfirm = confirm(
-      `⚠️ ATTENTION : Vous êtes sur le point de supprimer définitivement ${selectedPatientsData.length} patient(s) dont tous les renouvellements sont terminés.\n\nCette action est IRRÉVERSIBLE.\n\nÊtes-vous absolument sûr ?`
-    );
-
-    if (!firstConfirm) {
-      return;
-    }
-
-    const secondConfirm = prompt(
-      `Pour confirmer la suppression de ${selectedPatientsData.length} patient(s), tapez "SUPPRIMER" en majuscules :`
-    );
-
-    if (secondConfirm !== "SUPPRIMER") {
-      alert("Suppression annulée");
-      return;
+    // Vérifications spécifiques par action
+    if (selectedAction === "SMS") {
+      if (!selectedTemplateId) {
+        alert("Veuillez sélectionner un template SMS");
+        return;
+      }
+      if (!confirm(`Envoyer un SMS à ${selected.length} patient(s) ?`)) {
+        return;
+      }
+    } else if (selectedAction === "SUPPRIMER_CYCLE") {
+      if (!isAdmin) {
+        alert("Seuls les administrateurs peuvent supprimer des cycles");
+        return;
+      }
+      if (!confirm(`⚠️ Supprimer les cycles de ${selected.length} patient(s) ?\n\nCette action est IRRÉVERSIBLE.`)) {
+        return;
+      }
+    } else if (selectedAction === "SUPPRIMER_PATIENT") {
+      if (!isAdmin) {
+        alert("Seuls les administrateurs peuvent supprimer des patients");
+        return;
+      }
+      const confirmText = prompt(
+        `⚠️ ATTENTION : Vous êtes sur le point de supprimer définitivement ${selected.length} patient(s).\n\nCette action est IRRÉVERSIBLE.\n\nPour confirmer, tapez "SUPPRIMER" en majuscules :`
+      );
+      if (confirmText !== "SUPPRIMER") {
+        return;
+      }
+    } else if (selectedAction === "NE_PAS_RENOUVELLER") {
+      if (!confirm(`Ne plus renouveler pour ${selected.length} patient(s) ?\n\nLes cycles actifs seront annulés.`)) {
+        return;
+      }
     }
 
     setBulkActionLoading(true);
     try {
-      const results: Array<{ success: boolean; patientName: string; error?: string }> = [];
+      const res = await fetch("/api/patients/bulk-actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: selectedAction,
+          patientIds: selected,
+          templateId: selectedAction === "SMS" ? selectedTemplateId : undefined,
+        }),
+      });
 
-      for (const patient of selectedPatientsData) {
-        try {
-          const res = await fetch(`/api/admin/anonymize/${patient.id}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ anonymize: false }),
-          });
+      const data = await res.json();
 
-          if (res.ok) {
-            results.push({
-              success: true,
-              patientName: `${patient.prenom} ${patient.nom}`,
-            });
-          } else {
-            const errorData = await res.json();
-            results.push({
-              success: false,
-              patientName: `${patient.prenom} ${patient.nom}`,
-              error: errorData.error || "Erreur inconnue",
-            });
-          }
-        } catch (error) {
-          results.push({
-            success: false,
-            patientName: `${patient.prenom} ${patient.nom}`,
-            error: error instanceof Error ? error.message : "Erreur inconnue",
-          });
-        }
+      if (!res.ok) {
+        alert(data.error || "Erreur lors de l'action de masse");
+        return;
       }
 
-      const successCount = results.filter((r) => r.success).length;
-      const failCount = results.length - successCount;
+      const { summary, results } = data;
+      const failedResults = results.filter((r: any) => !r.success);
 
-      if (failCount > 0) {
-        const failedPatients = results
-          .filter((r) => !r.success)
-          .map((r) => `- ${r.patientName}: ${r.error || "Erreur"}`)
+      if (failedResults.length > 0) {
+        const failedPatients = failedResults
+          .map((r: any) => `- ${r.patientName}: ${r.error || "Erreur"}`)
           .join("\n");
         alert(
-          `Résultats de la suppression :\n${successCount} succès\n${failCount} échec(s)\n\nÉchecs :\n${failedPatients}`
+          `Résultats :\n${summary.success} succès\n${summary.failed} échec(s)\n\nÉchecs :\n${failedPatients}`
         );
       } else {
-        alert(`✅ ${successCount} patient(s) supprimé(s) avec succès`);
+        alert(`✅ ${summary.success} action(s) effectuée(s) avec succès`);
       }
 
       setSelectedPatients(new Set());
+      setSelectedAction("");
+      setSelectedTemplateId("");
       loadPatients();
     } catch (error) {
-      console.error("Erreur suppression en masse:", error);
-      alert("Erreur lors de la suppression");
+      console.error("Erreur action de masse:", error);
+      alert("Erreur lors de l'action de masse");
     } finally {
       setBulkActionLoading(false);
     }
   };
+
 
   return (
     <ProtectedRoute>
@@ -269,34 +201,75 @@ export default function TerminatedPatientsPage() {
           {/* Barre d'actions en bloc */}
           {selectedPatients.size > 0 && (
             <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex flex-col gap-4">
                 <div className="text-sm font-medium text-blue-900">
                   {selectedPatients.size} patient(s) sélectionné(s)
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  <button
-                    onClick={handleBulkSendSms}
-                    disabled={bulkActionLoading}
-                    className="px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-white hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {bulkActionLoading ? "Envoi..." : "📱 Envoyer SMS"}
-                  </button>
-                  {isAdmin && (
-                    <button
-                      onClick={handleBulkDelete}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Action
+                    </label>
+                    <select
+                      value={selectedAction}
+                      onChange={(e) => {
+                        setSelectedAction(e.target.value);
+                        setSelectedTemplateId(""); // Reset template quand on change d'action
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       disabled={bulkActionLoading}
-                      className="px-4 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-white hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {bulkActionLoading ? "Suppression..." : "🗑️ Supprimer"}
-                    </button>
+                      <option value="">-- Choisir une action --</option>
+                      <option value="SMS">📱 Envoyer SMS</option>
+                      <option value="NE_PAS_RENOUVELLER">🚫 Ne pas renouveler</option>
+                      {isAdmin && (
+                        <>
+                          <option value="SUPPRIMER_CYCLE">🗑️ Supprimer cycle</option>
+                          <option value="SUPPRIMER_PATIENT">🗑️ Supprimer patient</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                  {selectedAction === "SMS" && (
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Template SMS
+                      </label>
+                      <select
+                        value={selectedTemplateId}
+                        onChange={(e) => setSelectedTemplateId(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        disabled={bulkActionLoading}
+                      >
+                        <option value="">-- Choisir un template --</option>
+                        {smsTemplates.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.libelle} ({template.code})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   )}
-                  <button
-                    onClick={() => setSelectedPatients(new Set())}
-                    disabled={bulkActionLoading}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Annuler
-                  </button>
+                  <div className="flex items-end gap-2">
+                    <button
+                      onClick={handleBulkAction}
+                      disabled={bulkActionLoading || !selectedAction || (selectedAction === "SMS" && !selectedTemplateId)}
+                      className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {bulkActionLoading ? "Traitement..." : "Exécuter"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedPatients(new Set());
+                        setSelectedAction("");
+                        setSelectedTemplateId("");
+                      }}
+                      disabled={bulkActionLoading}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Annuler
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

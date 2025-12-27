@@ -22,7 +22,7 @@ export interface SmsResult {
 /**
  * Envoie un SMS via TextingHouse avec retry automatique
  */
-async function sendSmsToTextingHouse(
+export async function sendSmsToTextingHouse(
   to: string,
   message: string
 ): Promise<SmsResult> {
