@@ -89,7 +89,7 @@ export default function ImportPage() {
               <li>Uploadez le fichier .ics ci-dessous</li>
             </ol>
             <p className="mt-3 text-xs text-gray-500">
-              💡 Le format .ics (iCalendar) est le format natif d&apos;export de Google Takeout et contient toutes les informations de récurrence.
+              Le format .ics (iCalendar) est le format natif d&apos;export de Google Takeout et contient toutes les informations de récurrence.
             </p>
           </div>
 
@@ -108,7 +108,7 @@ export default function ImportPage() {
                   htmlFor="file"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Fichier CSV
+                  Fichier (.ics ou .csv)
                 </label>
                 <input
                   id="file"
@@ -143,8 +143,7 @@ export default function ImportPage() {
                 >
                   <p className="font-semibold">{result.message}</p>
                   <p className="text-sm mt-1">
-                    ✅ {result.results.success} importés | ❌ {result.results.errors}{" "}
-                    erreurs
+                    {result.results.success} importés | {result.results.errors} erreurs
                   </p>
                 </div>
 
@@ -154,7 +153,6 @@ export default function ImportPage() {
                       Détails de l&apos;import :
                     </h3>
                     <div className="overflow-x-auto">
-                      <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
                         <thead className="bg-gray-50">
                           <tr>
@@ -178,15 +176,15 @@ export default function ImportPage() {
                               <td className="px-2 sm:px-3 py-2 whitespace-nowrap">
                                 {detail.status === "Importé" ? (
                                   <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                    ✅ {detail.status}
+                                    {detail.status}
                                   </span>
                                 ) : detail.status === "Ignoré" ? (
                                   <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                                    ⏭️ {detail.status}
+                                    {detail.status}
                                   </span>
                                 ) : (
                                   <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                                    ❌ {detail.status}
+                                    {detail.status}
                                   </span>
                                 )}
                               </td>
