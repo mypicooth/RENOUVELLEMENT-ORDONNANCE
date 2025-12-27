@@ -65,7 +65,13 @@ export async function POST(request: NextRequest) {
     const results = {
       success: 0,
       errors: 0,
-      details: [] as Array<{ patient: string; status: string; error?: string }>,
+      details: [] as Array<{
+        patient: string;
+        status: string;
+        error?: string;
+        firstRenewalDate?: string;
+        nbOccurrences?: number;
+      }>,
     };
 
     for (const event of events) {
