@@ -23,6 +23,8 @@ model User {
 
   createdCycles PrescriptionCycle[] @relation("CreatedBy")
   sentSms       SmsLog[]            @relation("SentBy")
+  createdConsents PatientConsent[]  @relation("ConsentCreatedBy")
+  revokedConsents PatientConsent[] @relation("ConsentRevokedBy")
 
   @@map("users")
 }
@@ -39,7 +41,8 @@ model Patient {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  cycles PrescriptionCycle[]
+  cycles    PrescriptionCycle[]
+  consents  PatientConsent[]
 
   @@map("patients")
 }
@@ -119,5 +122,31 @@ model SmsLog {
   @@map("sms_logs")
   @@index([sent_at])
   @@index([statut])
+}
+
+model PatientConsent {
+  id              String    @id @default(cuid())
+  patient_id      String
+  consent_type    String    @default("ORDONNANCE_RETENTION")
+  created_at      DateTime  @default(now())
+  signed_at       DateTime?
+  place           String    @default("LA POSSESSION")
+  today_date      String
+  end_date        String?
+  document_url    String?   // URL du PDF stocké
+  signature_data  String?   // Base64 de la signature
+  revoked_at      DateTime?
+  revoked_reason  String?
+  created_by      String    // User qui a créé le consentement
+  revoked_by      String?   // User qui a révoqué
+
+  patient Patient @relation(fields: [patient_id], references: [id])
+  creator User    @relation("ConsentCreatedBy", fields: [created_by], references: [id])
+  revoker User?   @relation("ConsentRevokedBy", fields: [revoked_by], references: [id])
+
+  @@map("patient_consents")
+  @@index([patient_id])
+  @@index([consent_type])
+  @@index([revoked_at])
 }
 

@@ -9,6 +9,24 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { UserRole } from "@/lib/types";
 
+interface Consent {
+  id: string;
+  consent_type: string;
+  created_at: string;
+  signed_at: string | null;
+  today_date: string;
+  end_date: string | null;
+  revoked_at: string | null;
+  revoked_reason: string | null;
+  document_url: string | null;
+  creator: {
+    email: string;
+  };
+  revoker: {
+    email: string;
+  } | null;
+}
+
 interface Patient {
   id: string;
   nom: string;
@@ -64,6 +82,9 @@ export default function PatientDetailPage() {
     notes: "",
   });
   const [saving, setSaving] = useState(false);
+  const [consents, setConsents] = useState<Consent[]>([]);
+  const [loadingConsents, setLoadingConsents] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
   const isAdmin = session?.user.role === UserRole.ADMIN;
 
   const loadPatient = useCallback(async () => {
@@ -84,6 +105,78 @@ export default function PatientDetailPage() {
   useEffect(() => {
     loadPatient();
   }, [loadPatient]);
+
+  const loadConsents = useCallback(async () => {
+    if (!params.id) return;
+    setLoadingConsents(true);
+    try {
+      const res = await fetch(`/api/patients/${params.id}/consents`);
+      if (res.ok) {
+        const data = await res.json();
+        setConsents(data);
+      }
+    } catch (error) {
+      console.error("Erreur chargement consentements:", error);
+    } finally {
+      setLoadingConsents(false);
+    }
+  }, [params.id]);
+
+  useEffect(() => {
+    if (patient) {
+      loadConsents();
+    }
+  }, [patient, loadConsents]);
+
+  const handleRevoke = async (consentId: string) => {
+    if (!confirm("Êtes-vous sûr de vouloir révoquer ce consentement ?")) {
+      return;
+    }
+
+    const reason = prompt("Raison de la révocation (optionnel):") || null;
+
+    setRevokingId(consentId);
+    try {
+      const res = await fetch(`/api/patients/${params.id}/consents/${consentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+
+      if (res.ok) {
+        loadConsents();
+      } else {
+        alert("Erreur lors de la révocation");
+      }
+    } catch (error) {
+      console.error("Erreur révocation:", error);
+      alert("Erreur lors de la révocation");
+    } finally {
+      setRevokingId(null);
+    }
+  };
+
+  const handleDownloadPDF = async (consentId: string) => {
+    try {
+      const res = await fetch(`/api/patients/${params.id}/consents/${consentId}`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `autorisation-${consentId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        alert("Erreur lors du téléchargement");
+      }
+    } catch (error) {
+      console.error("Erreur téléchargement:", error);
+      alert("Erreur lors du téléchargement");
+    }
+  };
 
   useEffect(() => {
     if (patient) {
@@ -216,7 +309,13 @@ export default function PatientDetailPage() {
           </div>
 
           {isAdmin && !editing && (
-            <div className="mb-4 flex gap-2">
+            <div className="mb-4 flex gap-2 flex-wrap">
+              <button
+                onClick={() => router.push(`/patients/${params.id}/consent`)}
+                className="px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
+              >
+                Faire signer l&apos;autorisation
+              </button>
               <button
                 onClick={handleAnonymize}
                 className="px-4 py-2 border border-yellow-300 rounded-md text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
@@ -367,6 +466,73 @@ export default function PatientDetailPage() {
                   </dd>
                 </div>
               </dl>
+            )}
+          </div>
+
+          <div className="bg-white shadow rounded-lg p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Documents - Autorisations</h2>
+            </div>
+            {loadingConsents ? (
+              <p className="text-gray-500">Chargement...</p>
+            ) : consents.length === 0 ? (
+              <p className="text-gray-500">Aucune autorisation signée</p>
+            ) : (
+              <div className="space-y-3">
+                {consents.map((consent) => (
+                  <div
+                    key={consent.id}
+                    className="border rounded-lg p-4 flex items-center justify-between"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-gray-900">
+                          Autorisation de conservation d&apos;ordonnance
+                        </span>
+                        {consent.revoked_at ? (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                            Révoqué
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            Actif
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p>Signé le : {format(new Date(consent.signed_at || consent.created_at), "dd/MM/yyyy à HH:mm", { locale: fr })}</p>
+                        <p>Date de fin : {consent.end_date || "Jusqu&apos;à révocation"}</p>
+                        {consent.revoked_at && (
+                          <p className="text-red-600">
+                            Révoqué le : {format(new Date(consent.revoked_at), "dd/MM/yyyy", { locale: fr })}
+                            {consent.revoked_reason && ` - ${consent.revoked_reason}`}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500">
+                          Créé par : {consent.creator.email}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <button
+                        onClick={() => handleDownloadPDF(consent.id)}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                      >
+                        Télécharger PDF
+                      </button>
+                      {!consent.revoked_at && (
+                        <button
+                          onClick={() => handleRevoke(consent.id)}
+                          disabled={revokingId === consent.id}
+                          className="px-3 py-1 text-sm border border-red-300 rounded-md text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-50"
+                        >
+                          {revokingId === consent.id ? "Révocation..." : "Révoquer"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
