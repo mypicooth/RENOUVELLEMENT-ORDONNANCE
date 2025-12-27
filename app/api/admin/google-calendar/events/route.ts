@@ -45,10 +45,16 @@ export async function POST(request: NextRequest) {
 
     const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
+    // Utiliser la date fournie ou la date du jour par défaut
+    const startDate = timeMin 
+      ? new Date(timeMin)
+      : new Date(); // Par défaut, date du jour
+    startDate.setHours(0, 0, 0, 0); // Début de la journée
+
     // Récupérer les événements
     const response = await calendar.events.list({
       calendarId: calendarId || "primary",
-      timeMin: timeMin || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 an en arrière
+      timeMin: startDate.toISOString(), // Utiliser la date sélectionnée
       timeMax: timeMax || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 an en avant
       maxResults: 2500,
       singleEvents: false, // Important pour récupérer les événements récurrents

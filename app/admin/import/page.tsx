@@ -29,6 +29,9 @@ function ImportPageContent() {
   const [googleImportLoading, setGoogleImportLoading] = useState(false);
   const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
   const [googleRefreshToken, setGoogleRefreshToken] = useState<string | null>(null);
+  const [importStartDate, setImportStartDate] = useState<string>(
+    new Date().toISOString().split("T")[0] // Date du jour par défaut
+  );
 
   useEffect(() => {
     const checkGoogleAuth = async () => {
@@ -91,17 +94,26 @@ function ImportPageContent() {
       return;
     }
 
+    if (!importStartDate) {
+      setError("Veuillez sélectionner une date de début d'import");
+      return;
+    }
+
     setGoogleImportLoading(true);
     setError("");
     setResult(null);
 
     try {
+      // Utiliser la date sélectionnée comme date de début
+      const startDate = new Date(importStartDate);
+      startDate.setHours(0, 0, 0, 0); // Début de la journée
+
       const res = await fetch("/api/admin/google-calendar/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          timeMin: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
-          timeMax: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          timeMin: startDate.toISOString(),
+          timeMax: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 an en avant
         }),
         credentials: "include",
       });
@@ -195,12 +207,72 @@ function ImportPageContent() {
                 ✅ Connecté à Google Calendar
               </p>
             </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date de début d&apos;import
+                </label>
+                <input
+                  type="date"
+                  value={importStartDate}
+                  onChange={(e) => setImportStartDate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Seuls les événements à partir de cette date seront importés
+                </p>
+              </div>
+              <button
+                onClick={handleGoogleImport}
+                disabled={googleImportLoading || !importStartDate}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {googleImportLoading ? "Import en cours..." : "📥 Importer depuis Google Calendar"}
+              </button>
+            </div>
             <button
-              onClick={handleGoogleImport}
+              onClick={async () => {
+                if (!googleAccessToken) {
+                  setError("Veuillez d'abord vous authentifier avec Google");
+                  return;
+                }
+
+                if (!confirm("Mettre à jour les numéros de téléphone depuis les descriptions des événements Google Calendar ?")) {
+                  return;
+                }
+
+                setGoogleImportLoading(true);
+                setError("");
+                setResult(null);
+
+                try {
+                  const res = await fetch("/api/admin/update-phones-from-calendar", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      startDate: importStartDate,
+                    }),
+                    credentials: "include",
+                  });
+
+                  const data = await res.json();
+
+                  if (!res.ok) {
+                    setError(data.error || "Erreur lors de la mise à jour des téléphones");
+                    return;
+                  }
+
+                  setResult(data);
+                } catch (err: any) {
+                  setError(err.message || "Erreur lors de la mise à jour des téléphones");
+                } finally {
+                  setGoogleImportLoading(false);
+                }
+              }}
               disabled={googleImportLoading}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="ml-2 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {googleImportLoading ? "Import en cours..." : "📥 Importer depuis Google Calendar"}
+              {googleImportLoading ? "Mise à jour..." : "📞 Mettre à jour les téléphones"}
             </button>
             <button
               onClick={async () => {
