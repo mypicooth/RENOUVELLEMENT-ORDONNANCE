@@ -75,3 +75,4 @@ Si vous voulez changer le mot de passe admin :
 1. Exécutez : `node scripts/generate-admin-hash.js "nouveau-mot-de-passe"`
 2. Utilisez le hash généré dans le script SQL
 
+

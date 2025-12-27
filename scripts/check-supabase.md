@@ -41,3 +41,4 @@ La connection pooler (port 6543) est généralement plus fiable que la connectio
 2. Vérifiez que l'état du projet est **"Active"**
 3. Vérifiez les **"Connection Info"** pour confirmer l'hôte
 
+

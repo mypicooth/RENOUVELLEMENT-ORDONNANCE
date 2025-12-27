@@ -55,3 +55,4 @@ echo "   - Ouvrir Prisma Studio: npm run db:studio"
 echo "   - Vérifier les tables dans Supabase Dashboard"
 echo ""
 
+

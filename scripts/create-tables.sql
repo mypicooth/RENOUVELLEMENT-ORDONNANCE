@@ -142,3 +142,4 @@ ON CONFLICT ("code") DO NOTHING;
 -- ============================================
 SELECT '✅ Tables créées avec succès!' as message;
 
+

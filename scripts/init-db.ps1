@@ -69,3 +69,4 @@ Write-Host "   - Ouvrir Prisma Studio: npm run db:studio"
 Write-Host "   - Vérifier les tables dans Supabase Dashboard"
 Write-Host ""
 
+

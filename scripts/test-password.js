@@ -21,3 +21,4 @@ compare(password, hash)
     console.error("❌ Erreur:", error.message);
   });
 
+

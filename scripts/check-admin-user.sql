@@ -52,3 +52,4 @@ WHERE "email" = 'admin@pharmacie.local';
 SELECT '✅ Utilisateur admin vérifié et mis à jour!' as message;
 SELECT id, email, role, actif, "createdAt" FROM "users" WHERE "email" = 'admin@pharmacie.local';
 
+

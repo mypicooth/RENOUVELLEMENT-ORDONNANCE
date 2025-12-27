@@ -8,3 +8,4 @@ SELECT
 FROM "users" 
 WHERE "email" = 'admin@pharmacie.local';
 
+

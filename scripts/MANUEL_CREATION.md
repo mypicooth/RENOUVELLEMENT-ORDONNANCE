@@ -102,3 +102,4 @@ Vous pouvez maintenant vous connecter avec :
 - Les contraintes de clés étrangères sont activées
 - Les index sont créés pour optimiser les requêtes
 
+

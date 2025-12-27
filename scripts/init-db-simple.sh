@@ -29,3 +29,4 @@ npx prisma db seed
 echo ""
 echo "✅ Terminé! Tables créées et données initiales ajoutées."
 
+

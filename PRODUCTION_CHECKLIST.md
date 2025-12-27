@@ -124,3 +124,4 @@ Dans la section **"Environment Variables"**, ajoutez :
 
 Une fois déployé, votre application sera accessible à l'URL Vercel et fonctionnera en production !
 
+

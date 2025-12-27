@@ -23,3 +23,4 @@ VALUES (
 SELECT '✅ Utilisateur admin créé/mis à jour!' as message;
 SELECT id, email, role, nom, prenom FROM "users" WHERE "email" = 'admin@pharmacie.local';
 
+

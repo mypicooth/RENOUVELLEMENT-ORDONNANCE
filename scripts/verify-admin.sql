@@ -22,3 +22,4 @@ WHERE "email" = 'admin@pharmacie.local';
 -- Si actif = false, c'est le problème
 -- Si le hash ne commence pas par $2a$12$, c'est le problème
 
+

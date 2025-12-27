@@ -20,6 +20,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       ? [
           { href: "/admin/dashboard", label: "Dashboard KPI" },
           { href: "/admin/templates-sms", label: "Templates SMS" },
+          { href: "/admin/import", label: "Import Google Calendar" },
         ]
       : []),
   ];

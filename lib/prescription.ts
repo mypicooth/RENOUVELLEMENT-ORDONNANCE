@@ -1,11 +1,11 @@
 import { prisma } from "./prisma";
-import { addDays, getDay, subDays } from "date-fns";
+import { addDays, getDay } from "date-fns";
 
 /**
  * Ajuste une date pour qu'elle tombe sur un jour ouvrable (lundi-samedi)
  * Si la date tombe un dimanche, on l'avance au lundi (préférence pour ne pas retarder)
  */
-function adjustToWorkingDay(date: Date): Date {
+export function adjustToWorkingDay(date: Date): Date {
   const dayOfWeek = getDay(date); // 0 = dimanche, 1 = lundi, ..., 6 = samedi
   
   if (dayOfWeek === 0) {
