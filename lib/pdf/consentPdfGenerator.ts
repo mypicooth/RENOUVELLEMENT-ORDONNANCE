@@ -17,79 +17,143 @@ export async function generateConsentPDF(data: ConsentTemplateData): Promise<Uin
   const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  // Titre principal
-  currentPage.drawText("AUTORISATION DE CONSERVATION D'ORDONNANCE", {
-    x: margin,
-    y: yPosition,
-    size: 14,
-    font: helveticaBold,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 20;
+  // Couleurs
+  const primaryColor = rgb(0.2, 0.4, 0.8); // Bleu
+  const secondaryColor = rgb(0.3, 0.3, 0.3); // Gris foncé
+  const lightGray = rgb(0.9, 0.9, 0.9);
+  const darkGray = rgb(0.5, 0.5, 0.5);
 
+  // En-tête avec fond coloré
+  const headerHeight = 80;
+  currentPage.drawRectangle({
+    x: 0,
+    y: currentPage.getHeight() - headerHeight,
+    width: currentPage.getWidth(),
+    height: headerHeight,
+    color: primaryColor,
+  });
+
+  // Titre principal en blanc sur fond bleu
+  currentPage.drawText("AUTORISATION DE CONSERVATION", {
+    x: margin,
+    y: currentPage.getHeight() - 35,
+    size: 18,
+    font: helveticaBold,
+    color: rgb(1, 1, 1), // Blanc
+  });
+
+  currentPage.drawText("D'ORDONNANCE", {
+    x: margin,
+    y: currentPage.getHeight() - 55,
+    size: 18,
+    font: helveticaBold,
+    color: rgb(1, 1, 1), // Blanc
+  });
+
+  // Sous-titre
   currentPage.drawText("(COPIE / ORIGINAL SELON PROCÉDURE)", {
     x: margin,
-    y: yPosition,
-    size: 10,
+    y: currentPage.getHeight() - 70,
+    size: 9,
     font: helvetica,
-    color: rgb(0, 0, 0),
+    color: rgb(0.95, 0.95, 0.95), // Blanc cassé
+  });
+
+  yPosition = currentPage.getHeight() - headerHeight - 20;
+
+  // Informations pharmacie
+  currentPage.drawText("Pharmacie Saint Laurent", {
+    x: margin,
+    y: yPosition,
+    size: 11,
+    font: helveticaBold,
+    color: secondaryColor,
   });
   yPosition -= 15;
 
-  currentPage.drawText("Pharmacie Saint Laurent – 73 rue Romain Rolland, 97419 La Possession", {
+  currentPage.drawText("73 rue Romain Rolland, 97419 La Possession", {
     x: margin,
     y: yPosition,
     size: 10,
     font: helvetica,
-    color: rgb(0, 0, 0),
+    color: darkGray,
   });
   yPosition -= 30;
 
-  // Section Identité du patient
-  currentPage.drawText("Identité du patient", {
+  // Section Identité du patient avec fond
+  const sectionBgHeight = 90;
+  currentPage.drawRectangle({
     x: margin,
+    y: yPosition - sectionBgHeight + 5,
+    width: maxWidth,
+    height: sectionBgHeight,
+    color: lightGray,
+    borderColor: primaryColor,
+    borderWidth: 1,
+  });
+
+  currentPage.drawText("Identité du patient", {
+    x: margin + 5,
     y: yPosition,
-    size: 12,
+    size: 13,
     font: helveticaBold,
-    color: rgb(0, 0, 0),
+    color: primaryColor,
   });
   yPosition -= 20;
 
   const patientInfo = [
-    `Nom : ${data.patientLastName}`,
-    `Prénom : ${data.patientFirstName}`,
-    `Date de naissance : ${data.patientDOB}`,
-    `Téléphone : ${data.patientPhone}`,
-    `Email (facultatif) : ${data.patientEmail || "Non renseigné"}`,
+    { label: "Nom", value: data.patientLastName },
+    { label: "Prénom", value: data.patientFirstName },
+    { label: "Date de naissance", value: data.patientDOB || "Non renseigné" },
+    { label: "Téléphone", value: data.patientPhone },
+    { label: "Email (facultatif)", value: data.patientEmail || "Non renseigné" },
   ];
 
-  for (const line of patientInfo) {
-    currentPage.drawText(line, {
-      x: margin,
+  for (const info of patientInfo) {
+    currentPage.drawText(`${info.label} : `, {
+      x: margin + 10,
+      y: yPosition,
+      size: 10,
+      font: helveticaBold,
+      color: secondaryColor,
+    });
+    
+    const labelWidth = helveticaBold.widthOfTextAtSize(`${info.label} : `, 10);
+    currentPage.drawText(info.value, {
+      x: margin + 10 + labelWidth,
       y: yPosition,
       size: 10,
       font: helvetica,
       color: rgb(0, 0, 0),
     });
-    yPosition -= 15;
+    yPosition -= 16;
   }
-  yPosition -= 10;
+  yPosition -= 15;
 
   // Section Objet de l'autorisation
   currentPage.drawText("Objet de l'autorisation", {
     x: margin,
     y: yPosition,
-    size: 12,
+    size: 13,
     font: helveticaBold,
-    color: rgb(0, 0, 0),
+    color: primaryColor,
   });
-  yPosition -= 20;
+  yPosition -= 5;
+
+  // Ligne de séparation
+  currentPage.drawLine({
+    start: { x: margin, y: yPosition },
+    end: { x: margin + maxWidth, y: yPosition },
+    thickness: 1,
+    color: primaryColor,
+  });
+  yPosition -= 15;
 
   const objetText = `Je soussigné(e) ${data.patientFirstName} ${data.patientLastName}, autorise la Pharmacie Saint Laurent à conserver mon ordonnance afin de faciliter la gestion de mes renouvellements et la préparation de mes traitements, dans le cadre du suivi pharmaceutique.`;
-  const objetLines = wrapText(objetText, maxWidth, helvetica, 10);
+  const objetLines = wrapText(objetText, maxWidth - 10, helvetica, 10);
   for (const line of objetLines) {
     currentPage.drawText(line, {
-      x: margin,
+      x: margin + 5,
       y: yPosition,
       size: 10,
       font: helvetica,
@@ -103,11 +167,20 @@ export async function generateConsentPDF(data: ConsentTemplateData): Promise<Uin
   currentPage.drawText("Ce que j'accepte concrètement", {
     x: margin,
     y: yPosition,
-    size: 12,
+    size: 13,
     font: helveticaBold,
-    color: rgb(0, 0, 0),
+    color: primaryColor,
   });
-  yPosition -= 20;
+  yPosition -= 5;
+
+  // Ligne de séparation
+  currentPage.drawLine({
+    start: { x: margin, y: yPosition },
+    end: { x: margin + maxWidth, y: yPosition },
+    thickness: 1,
+    color: primaryColor,
+  });
+  yPosition -= 15;
 
   const acceptText = [
     "La pharmacie peut conserver l'ordonnance (ou une copie/scan si c'est la procédure retenue en officine).",
@@ -121,10 +194,10 @@ export async function generateConsentPDF(data: ConsentTemplateData): Promise<Uin
 
   for (const line of acceptText) {
     if (line) {
-      const wrappedLines = wrapText(line, maxWidth, helvetica, 10);
+      const wrappedLines = wrapText(line, maxWidth - 10, helvetica, 10);
       for (const wrappedLine of wrappedLines) {
         currentPage.drawText(wrappedLine, {
-          x: margin,
+          x: margin + 5,
           y: yPosition,
           size: 10,
           font: helvetica,
@@ -148,17 +221,26 @@ export async function generateConsentPDF(data: ConsentTemplateData): Promise<Uin
   currentPage.drawText("Durée de conservation", {
     x: margin,
     y: yPosition,
-    size: 12,
+    size: 13,
     font: helveticaBold,
-    color: rgb(0, 0, 0),
+    color: primaryColor,
   });
-  yPosition -= 20;
+  yPosition -= 5;
+
+  // Ligne de séparation
+  currentPage.drawLine({
+    start: { x: margin, y: yPosition },
+    end: { x: margin + maxWidth, y: yPosition },
+    thickness: 1,
+    color: primaryColor,
+  });
+  yPosition -= 15;
 
   const dureeText = `La conservation est limitée à la période utile de renouvellement, et au maximum jusqu'au : ${data.endDate}.`;
-  const dureeLines = wrapText(dureeText, maxWidth, helvetica, 10);
+  const dureeLines = wrapText(dureeText, maxWidth - 10, helvetica, 10);
   for (const line of dureeLines) {
     currentPage.drawText(line, {
-      x: margin,
+      x: margin + 5,
       y: yPosition,
       size: 10,
       font: helvetica,
@@ -172,17 +254,26 @@ export async function generateConsentPDF(data: ConsentTemplateData): Promise<Uin
   currentPage.drawText("Confidentialité et droits du patient (RGPD)", {
     x: margin,
     y: yPosition,
-    size: 12,
+    size: 13,
     font: helveticaBold,
-    color: rgb(0, 0, 0),
+    color: primaryColor,
   });
-  yPosition -= 20;
+  yPosition -= 5;
+
+  // Ligne de séparation
+  currentPage.drawLine({
+    start: { x: margin, y: yPosition },
+    end: { x: margin + maxWidth, y: yPosition },
+    thickness: 1,
+    color: primaryColor,
+  });
+  yPosition -= 15;
 
   const rgpdText = `Les informations sont utilisées uniquement pour la gestion de mes renouvellements et sont accessibles uniquement par l'équipe habilitée de la Pharmacie Saint Laurent.\nJe peux retirer mon accord à tout moment, demander l'accès, la rectification, ou la suppression des données lorsque cela est applicable, en contactant la pharmacie.`;
-  const rgpdLines = wrapText(rgpdText, maxWidth, helvetica, 10);
+  const rgpdLines = wrapText(rgpdText, maxWidth - 10, helvetica, 10);
   for (const line of rgpdLines) {
     currentPage.drawText(line, {
-      x: margin,
+      x: margin + 5,
       y: yPosition,
       size: 10,
       font: helvetica,
@@ -196,17 +287,26 @@ export async function generateConsentPDF(data: ConsentTemplateData): Promise<Uin
   currentPage.drawText("Révocation", {
     x: margin,
     y: yPosition,
-    size: 12,
+    size: 13,
     font: helveticaBold,
-    color: rgb(0, 0, 0),
+    color: primaryColor,
   });
-  yPosition -= 20;
+  yPosition -= 5;
+
+  // Ligne de séparation
+  currentPage.drawLine({
+    start: { x: margin, y: yPosition },
+    end: { x: margin + maxWidth, y: yPosition },
+    thickness: 1,
+    color: primaryColor,
+  });
+  yPosition -= 15;
 
   const revocationText = `Je comprends que je peux demander à tout moment la restitution de l'ordonnance (ou l'arrêt de la conservation / la suppression de la copie), sans justification.`;
-  const revocationLines = wrapText(revocationText, maxWidth, helvetica, 10);
+  const revocationLines = wrapText(revocationText, maxWidth - 10, helvetica, 10);
   for (const line of revocationLines) {
     currentPage.drawText(line, {
-      x: margin,
+      x: margin + 5,
       y: yPosition,
       size: 10,
       font: helvetica,
@@ -216,18 +316,43 @@ export async function generateConsentPDF(data: ConsentTemplateData): Promise<Uin
   }
   yPosition -= 30;
 
-  // Section Signature
-  currentPage.drawText("Signature", {
+  // Section Signature avec fond
+  const signatureBgHeight = 120;
+  if (yPosition - signatureBgHeight < 50) {
+    currentPage = pdfDoc.addPage([595, 842]);
+    yPosition = currentPage.getHeight() - margin;
+  }
+
+  currentPage.drawRectangle({
     x: margin,
+    y: yPosition - signatureBgHeight + 5,
+    width: maxWidth,
+    height: signatureBgHeight,
+    color: lightGray,
+    borderColor: primaryColor,
+    borderWidth: 1,
+  });
+
+  currentPage.drawText("Signature", {
+    x: margin + 5,
     y: yPosition,
-    size: 12,
+    size: 13,
     font: helveticaBold,
-    color: rgb(0, 0, 0),
+    color: primaryColor,
   });
   yPosition -= 20;
 
-  currentPage.drawText(`Lieu de signature : LA POSSESSION`, {
-    x: margin,
+  currentPage.drawText(`Lieu de signature : `, {
+    x: margin + 10,
+    y: yPosition,
+    size: 10,
+    font: helveticaBold,
+    color: secondaryColor,
+  });
+  
+  const lieuLabelWidth = helveticaBold.widthOfTextAtSize(`Lieu de signature : `, 10);
+  currentPage.drawText(`LA POSSESSION`, {
+    x: margin + 10 + lieuLabelWidth,
     y: yPosition,
     size: 10,
     font: helvetica,
@@ -235,8 +360,17 @@ export async function generateConsentPDF(data: ConsentTemplateData): Promise<Uin
   });
   yPosition -= 15;
 
-  currentPage.drawText(`Date de signature : ${data.todayDate}`, {
-    x: margin,
+  currentPage.drawText(`Date de signature : `, {
+    x: margin + 10,
+    y: yPosition,
+    size: 10,
+    font: helveticaBold,
+    color: secondaryColor,
+  });
+  
+  const dateLabelWidth = helveticaBold.widthOfTextAtSize(`Date de signature : `, 10);
+  currentPage.drawText(data.todayDate, {
+    x: margin + 10 + dateLabelWidth,
     y: yPosition,
     size: 10,
     font: helvetica,
@@ -245,11 +379,11 @@ export async function generateConsentPDF(data: ConsentTemplateData): Promise<Uin
   yPosition -= 20;
 
   currentPage.drawText("Signature du patient :", {
-    x: margin,
+    x: margin + 10,
     y: yPosition,
     size: 10,
-    font: helvetica,
-    color: rgb(0, 0, 0),
+    font: helveticaBold,
+    color: secondaryColor,
   });
   yPosition -= 10;
 
@@ -303,14 +437,33 @@ export async function generateConsentPDF(data: ConsentTemplateData): Promise<Uin
     }
   }
 
-  // Identifiant unique en bas de page
+  // Pied de page avec identifiant
+  const footerY = 25;
+  currentPage.drawLine({
+    start: { x: margin, y: footerY + 15 },
+    end: { x: margin + maxWidth, y: footerY + 15 },
+    thickness: 0.5,
+    color: darkGray,
+  });
+  
   const consentIdText = `ConsentID: ${data.consentId}`;
   currentPage.drawText(consentIdText, {
     x: margin,
-    y: 30,
-    size: 8,
+    y: footerY,
+    size: 7,
     font: helvetica,
-    color: rgb(0.5, 0.5, 0.5),
+    color: darkGray,
+  });
+
+  // Date de génération
+  const generatedText = `Généré le ${new Date().toLocaleDateString("fr-FR")}`;
+  const generatedWidth = helvetica.widthOfTextAtSize(generatedText, 7);
+  currentPage.drawText(generatedText, {
+    x: margin + maxWidth - generatedWidth,
+    y: footerY,
+    size: 7,
+    font: helvetica,
+    color: darkGray,
   });
 
   const pdfBytes = await pdfDoc.save();

@@ -32,6 +32,10 @@ body {
     display: none !important;
   }
   
+  .print-only {
+    display: block !important;
+  }
+  
   body {
     background: white;
     color: black;
@@ -40,6 +44,65 @@ body {
   .print-page {
     page-break-after: always;
   }
+  
+  /* Masquer la sidebar et autres éléments de navigation */
+  nav,
+  aside,
+  header:not(.print-header),
+  footer {
+    display: none !important;
+  }
+  
+  /* Améliorer l'affichage des tableaux */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+  }
+  
+  th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+  }
+  
+  /* Forcer l'affichage de toutes les colonnes */
+  .hidden,
+  .sm\:hidden,
+  .md\:hidden,
+  .lg\:hidden,
+  .xl\:hidden {
+    display: table-cell !important;
+  }
+  
+  /* Éviter les sauts de page dans les lignes */
+  tr {
+    page-break-inside: avoid;
+  }
+  
+  /* Améliorer l'espacement */
+  .print-header {
+    margin-bottom: 20px;
+  }
+  
+  /* Forcer l'affichage du tableau complet */
+  table {
+    font-size: 10pt;
+  }
+  
+  th, td {
+    font-size: 9pt;
+    padding: 6px;
+  }
+}
+
+/* Masquer les éléments print-only par défaut */
+.print-only {
+  display: none;
 }
 
 /* Styles pour le canvas de signature */

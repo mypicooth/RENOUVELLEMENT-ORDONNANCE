@@ -140,23 +140,51 @@ export default function HomePage() {
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <ProtectedRoute>
       <Layout>
         <div>
+          {/* En-tête d'impression */}
+          <div className="hidden print:block print:mb-4 print:border-b print:border-gray-300 print:pb-4">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                Pharmacie Saint Laurent
+              </h1>
+              <p className="text-sm text-gray-600 mb-1">
+                73 rue Romain Rolland, 97419 La Possession
+              </p>
+              <h2 className="text-xl font-semibold text-gray-900 mt-2">
+                Planning du jour
+              </h2>
+              <p className="text-sm text-gray-600">
+                {format(new Date(), "EEEE d MMMM yyyy", { locale: fr })}
+              </p>
+            </div>
+          </div>
+
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 no-print">
                 Planning du jour
               </h1>
-              <p className="mt-1 text-xs sm:text-sm text-gray-500">
+              <p className="mt-1 text-xs sm:text-sm text-gray-500 no-print">
                 {format(new Date(), "EEEE d MMMM yyyy", { locale: fr })}
               </p>
             </div>
             <div className="flex gap-2">
               <button
+                onClick={handlePrint}
+                className="flex-1 sm:flex-none px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 no-print"
+              >
+                🖨️ Imprimer
+              </button>
+              <button
                 onClick={() => router.push("/planning/semaine")}
-                className="flex-1 sm:flex-none px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="flex-1 sm:flex-none px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 no-print"
               >
                 Voir la semaine
               </button>
@@ -206,10 +234,11 @@ export default function HomePage() {
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                         <button
                           onClick={() => router.push(`/patients/${renewal.prescriptionCycle.patient.id}`)}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-blue-600 hover:text-blue-900 no-print"
                         >
                           {renewal.prescriptionCycle.patient.nom}
                         </button>
+                        <span className="print-only">{renewal.prescriptionCycle.patient.nom}</span>
                       </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                         {renewal.prescriptionCycle.patient.prenom}
@@ -255,7 +284,7 @@ export default function HomePage() {
                         {renewal.prescriptionCycle.patient.notes || "-"}
                       </td>
                       <td className="px-2 sm:px-4 py-3 text-sm font-medium">
-                        <div className="space-y-2">
+                        <div className="space-y-2 no-print">
                           <div className="flex gap-2 flex-wrap">
                             {renewal.statut === "A_PREPARER" && (
                               <button
@@ -313,6 +342,9 @@ export default function HomePage() {
                               </button>
                             </div>
                           )}
+                        </div>
+                        <div className="print-only text-xs text-gray-600">
+                          {STATUT_LABELS[renewal.statut]}
                         </div>
                       </td>
                     </tr>
