@@ -52,8 +52,11 @@ export async function GET(
 
     const pdfBytes = await generateConsentPDF(pdfData);
 
+    // Convertir Uint8Array en Buffer pour NextResponse
+    const pdfBuffer = Buffer.from(pdfBytes);
+
     // Retourner le PDF
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(pdfBuffer, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="autorisation-${consent.id}.pdf"`,
