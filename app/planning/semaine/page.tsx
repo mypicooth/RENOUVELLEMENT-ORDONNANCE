@@ -16,6 +16,7 @@ interface RenewalEvent {
   date_sms?: string | null;
   prescriptionCycle: {
     patient: {
+      id: string;
       nom: string;
       prenom: string;
       telephone_normalise: string;
