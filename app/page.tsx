@@ -58,6 +58,9 @@ export default function HomePage() {
   const [smsTemplates, setSmsTemplates] = useState<SmsTemplate[]>([]);
   const [selectedTemplates, setSelectedTemplates] = useState<Record<string, string>>({});
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [selectedRenewals, setSelectedRenewals] = useState<Set<string>>(new Set());
+  const [selectedAction, setSelectedAction] = useState<string>("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
 
   const loadSmsTemplates = useCallback(async () => {
     try {
@@ -145,71 +148,76 @@ export default function HomePage() {
     window.print();
   };
 
-  const handleBulkSendSms = async () => {
-    const patientsWithConsent = renewals.filter(
-      (r) => r.prescriptionCycle?.patient?.consentement
-    );
-
-    if (patientsWithConsent.length === 0) {
-      alert("Aucun patient avec consentement SMS dans le planning du jour");
+  const handleBulkAction = async () => {
+    if (!selectedAction) {
+      alert("Veuillez sélectionner une action");
       return;
     }
 
-    if (!confirm(`Envoyer un SMS à ${patientsWithConsent.length} patient(s) ?`)) {
+    const selected = Array.from(selectedRenewals);
+    if (selected.length === 0) {
+      alert("Aucun renouvellement sélectionné");
       return;
+    }
+
+    // Extraire les patientIds uniques depuis les renouvellements sélectionnés
+    const selectedRenewalObjects = renewals.filter((r) => selected.includes(r.id));
+    const patientIds = Array.from(new Set(selectedRenewalObjects.map((r) => r.prescriptionCycle.patient.id)));
+
+    if (selectedAction === "SMS") {
+      if (!selectedTemplateId) {
+        alert("Veuillez sélectionner un template SMS");
+        return;
+      }
+      if (!confirm(`Envoyer un SMS à ${patientIds.length} patient(s) ?`)) {
+        return;
+      }
+    } else if (selectedAction === "NE_PAS_RENOUVELLER") {
+      if (!confirm(`Ne plus renouveler pour ${patientIds.length} patient(s) ?\n\nLes cycles actifs seront annulés.`)) {
+        return;
+      }
     }
 
     setBulkActionLoading(true);
     try {
-      const results: Array<{ success: boolean; patientName: string; error?: string }> = [];
+      const res = await fetch("/api/patients/bulk-actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: selectedAction,
+          patientIds: patientIds,
+          templateId: selectedAction === "SMS" ? selectedTemplateId : undefined,
+        }),
+      });
 
-      for (const renewal of patientsWithConsent) {
-        try {
-          const smsRes = await fetch("/api/sms/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ renewalEventId: renewal.id }),
-          });
+      const data = await res.json();
 
-          const smsData = await smsRes.json();
-          if (smsData.success) {
-            results.push({
-              success: true,
-              patientName: `${renewal.prescriptionCycle.patient.prenom} ${renewal.prescriptionCycle.patient.nom}`,
-            });
-          } else {
-            results.push({
-              success: false,
-              patientName: `${renewal.prescriptionCycle.patient.prenom} ${renewal.prescriptionCycle.patient.nom}`,
-              error: smsData.error || "Erreur inconnue",
-            });
-          }
-        } catch (error) {
-          results.push({
-            success: false,
-            patientName: `${renewal.prescriptionCycle.patient.prenom} ${renewal.prescriptionCycle.patient.nom}`,
-            error: error instanceof Error ? error.message : "Erreur inconnue",
-          });
-        }
+      if (!res.ok) {
+        alert(data.error || "Erreur lors de l'action de masse");
+        return;
       }
 
-      const successCount = results.filter((r) => r.success).length;
-      const failCount = results.length - successCount;
+      const { summary, results } = data;
+      const failedResults = results.filter((r: any) => !r.success);
 
-      if (failCount > 0) {
-        const failedPatients = results
-          .filter((r) => !r.success)
-          .map((r) => `- ${r.patientName}: ${r.error || "Erreur"}`)
+      if (failedResults.length > 0) {
+        const failedPatients = failedResults
+          .map((r: any) => `- ${r.patientName}: ${r.error || "Erreur"}`)
           .join("\n");
-        alert(`Résultats :\n${successCount} succès\n${failCount} échec(s)\n\nÉchecs :\n${failedPatients}`);
+        alert(
+          `Résultats :\n${summary.success} succès\n${summary.failed} échec(s)\n\nÉchecs :\n${failedPatients}`
+        );
       } else {
-        alert(`✅ ${successCount} SMS envoyé(s) avec succès`);
+        alert(`✅ ${summary.success} action(s) effectuée(s) avec succès`);
       }
 
+      setSelectedRenewals(new Set());
+      setSelectedAction("");
+      setSelectedTemplateId("");
       loadTodayRenewals();
     } catch (error) {
-      console.error("Erreur envoi SMS en bloc:", error);
-      alert("Erreur lors de l'envoi des SMS");
+      console.error("Erreur action de masse:", error);
+      alert("Erreur lors de l'action de masse");
     } finally {
       setBulkActionLoading(false);
     }
@@ -254,13 +262,6 @@ export default function HomePage() {
                 🖨️ Imprimer
               </button>
               <button
-                onClick={handleBulkSendSms}
-                disabled={bulkActionLoading || renewals.filter((r) => r.prescriptionCycle?.patient?.consentement).length === 0}
-                className="flex-1 sm:flex-none px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-white hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed no-print"
-              >
-                {bulkActionLoading ? "Envoi..." : "📱 SMS de masse"}
-              </button>
-              <button
                 onClick={() => router.push("/planning/semaine")}
                 className="flex-1 sm:flex-none px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 no-print"
               >
@@ -268,6 +269,77 @@ export default function HomePage() {
               </button>
             </div>
           </div>
+
+          {/* Barre d'actions en bloc */}
+          {selectedRenewals.size > 0 && (
+            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4 no-print">
+              <div className="flex flex-col gap-4">
+                <div className="text-sm font-medium text-blue-900">
+                  {selectedRenewals.size} renouvellement(s) sélectionné(s)
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Action
+                    </label>
+                    <select
+                      value={selectedAction}
+                      onChange={(e) => {
+                        setSelectedAction(e.target.value);
+                        setSelectedTemplateId("");
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      disabled={bulkActionLoading}
+                    >
+                      <option value="">-- Choisir une action --</option>
+                      <option value="SMS">📱 Envoyer SMS</option>
+                      <option value="NE_PAS_RENOUVELLER">🚫 Ne pas renouveler</option>
+                    </select>
+                  </div>
+                  {selectedAction === "SMS" && (
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Template SMS
+                      </label>
+                      <select
+                        value={selectedTemplateId}
+                        onChange={(e) => setSelectedTemplateId(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                        disabled={bulkActionLoading}
+                      >
+                        <option value="">-- Choisir un template --</option>
+                        {smsTemplates.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.libelle} ({template.code})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div className="flex items-end gap-2">
+                    <button
+                      onClick={handleBulkAction}
+                      disabled={bulkActionLoading || !selectedAction || (selectedAction === "SMS" && !selectedTemplateId)}
+                      className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {bulkActionLoading ? "Traitement..." : "Exécuter"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedRenewals(new Set());
+                        setSelectedAction("");
+                        setSelectedTemplateId("");
+                      }}
+                      disabled={bulkActionLoading}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {loading ? (
             <div className="text-center py-8">Chargement...</div>
@@ -280,6 +352,20 @@ export default function HomePage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedRenewals.size === renewals.length && renewals.length > 0}
+                        onChange={() => {
+                          if (selectedRenewals.size === renewals.length) {
+                            setSelectedRenewals(new Set());
+                          } else {
+                            setSelectedRenewals(new Set(renewals.map((r) => r.id)));
+                          }
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </th>
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Nom
                     </th>
@@ -308,7 +394,23 @@ export default function HomePage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {renewals.map((renewal) => (
-                    <tr key={renewal.id}>
+                    <tr key={renewal.id} className={selectedRenewals.has(renewal.id) ? "bg-blue-50" : ""}>
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={selectedRenewals.has(renewal.id)}
+                          onChange={() => {
+                            const newSelected = new Set(selectedRenewals);
+                            if (newSelected.has(renewal.id)) {
+                              newSelected.delete(renewal.id);
+                            } else {
+                              newSelected.add(renewal.id);
+                            }
+                            setSelectedRenewals(newSelected);
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                         <button
                           onClick={() => router.push(`/patients/${renewal.prescriptionCycle.patient.id}`)}
