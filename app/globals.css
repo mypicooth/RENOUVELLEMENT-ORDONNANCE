@@ -89,19 +89,27 @@ body {
   
   /* Améliorer l'affichage des tableaux */
   table {
-    width: 100%;
+    width: 100% !important;
     border-collapse: collapse;
+    table-layout: fixed !important;
+    font-size: 7pt !important;
   }
   
   th, td {
     border: 1px solid #ddd;
-    padding: 8px;
+    padding: 2px 3px !important;
     text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 7pt !important;
   }
   
   th {
     background-color: #f2f2f2;
     font-weight: bold;
+    font-size: 6pt !important;
+    padding: 3px 3px !important;
   }
   
   /* Forcer l'affichage de toutes les colonnes */
@@ -120,17 +128,102 @@ body {
   
   /* Améliorer l'espacement */
   .print-header {
-    margin-bottom: 20px;
+    margin-bottom: 10px;
   }
   
-  /* Forcer l'affichage du tableau complet */
-  table {
-    font-size: 10pt;
+  /* Optimiser les largeurs des colonnes pour tout faire tenir sur une ligne */
+  table th:nth-child(1),
+  table td:nth-child(1) {
+    width: 12% !important;
   }
   
-  th, td {
-    font-size: 9pt;
-    padding: 6px;
+  table th:nth-child(2),
+  table td:nth-child(2) {
+    width: 12% !important;
+  }
+  
+  table th:nth-child(3),
+  table td:nth-child(3) {
+    width: 12% !important;
+  }
+  
+  table th:nth-child(4),
+  table td:nth-child(4) {
+    width: 10% !important;
+  }
+  
+  table th:nth-child(5),
+  table td:nth-child(5) {
+    width: 10% !important;
+  }
+  
+  table th:nth-child(6),
+  table td:nth-child(6) {
+    width: 12% !important;
+  }
+  
+  table th:nth-child(7),
+  table td:nth-child(7) {
+    width: 15% !important;
+  }
+  
+  table th:nth-child(8),
+  table td:nth-child(8) {
+    width: 6% !important;
+  }
+  
+  /* Ajustement pour les tableaux avec moins de colonnes (planning semaine = 7 colonnes + actions) */
+  /* Les largeurs seront automatiquement redistribuées grâce à table-layout: fixed */
+  
+  /* Forcer le tableau à tenir sur la largeur de la page */
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+  
+  /* Réduire les marges et padding du conteneur */
+  .px-4,
+  .px-6,
+  .px-8,
+  .sm\:px-4,
+  .sm\:px-6,
+  .lg\:px-8 {
+    padding-left: 5px !important;
+    padding-right: 5px !important;
+  }
+  
+  /* Réduire les espacements verticaux */
+  .py-4,
+  .py-6,
+  .sm\:py-6 {
+    padding-top: 3px !important;
+    padding-bottom: 3px !important;
+  }
+  
+  /* Réduire les marges des tableaux */
+  .mb-4,
+  .mb-6 {
+    margin-bottom: 8px !important;
+  }
+  
+  /* Simplifier les badges de statut pour l'impression */
+  .rounded-full {
+    padding: 1px 3px !important;
+    font-size: 6pt !important;
+    line-height: 1.2 !important;
+  }
+  
+  /* Réduire la taille des textes dans les cellules */
+  .text-sm {
+    font-size: 7pt !important;
+  }
+  
+  .text-xs {
+    font-size: 6pt !important;
+  }
+  
+  /* Réduire les espacements dans les divs */
+  .space-y-2 > * + * {
+    margin-top: 2px !important;
   }
 }
 
