@@ -160,8 +160,7 @@ function ImportPageContent() {
   };
 
   return (
-    <>
-      <div>
+    <div>
       <div className="mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
           Import depuis Google Calendar
@@ -350,7 +349,7 @@ function ImportPageContent() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
