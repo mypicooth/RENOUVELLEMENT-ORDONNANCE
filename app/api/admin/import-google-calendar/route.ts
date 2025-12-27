@@ -73,14 +73,18 @@ export async function POST(request: NextRequest) {
           
           // Extraire la règle de récurrence (RRULE)
           const rruleProp = vevent.getFirstProperty("rrule");
-          let rrule = null;
+          let rrule: any = null;
           if (rruleProp) {
-            rrule = rruleProp.getFirstValue();
+            const rruleValue = rruleProp.getFirstValue();
+            // Vérifier que c'est bien un objet Recur
+            if (rruleValue && typeof rruleValue === "object" && "freq" in rruleValue) {
+              rrule = rruleValue;
+            }
           }
 
           // Extraire UNTIL si présent dans RRULE
           let untilDate: Date | null = null;
-          if (rrule && rrule.until) {
+          if (rrule && rrule.until && typeof rrule.until === "object" && "toJSDate" in rrule.until) {
             untilDate = rrule.until.toJSDate();
           }
 
@@ -90,7 +94,7 @@ export async function POST(request: NextRequest) {
           
           if (rrule) {
             // Détecter l'intervalle (FREQ=WEEKLY;INTERVAL=3)
-            if (rrule.freq === "WEEKLY" && rrule.interval) {
+            if (rrule.freq === "WEEKLY" && typeof rrule.interval === "number") {
               intervalleJours = rrule.interval * 7;
             }
             
@@ -99,7 +103,7 @@ export async function POST(request: NextRequest) {
               const diffTime = untilDate.getTime() - startDate.getTime();
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
               nbOccurrences = Math.floor(diffDays / intervalleJours);
-            } else if (rrule.count) {
+            } else if (typeof rrule.count === "number") {
               nbOccurrences = rrule.count - 1; // -1 car R0 est déjà compté
             } else {
               // Par défaut, 12 renouvellements
