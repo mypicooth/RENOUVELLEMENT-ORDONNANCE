@@ -82,26 +82,26 @@ export default function PatientsPage() {
               Aucun patient trouvé
             </div>
           ) : (
-            <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            <div className="bg-white shadow overflow-hidden sm:rounded-md overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Nom
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Prénom
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">
                       Téléphone
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
                       Date recrutement
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Consentement
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Actions
                     </th>
                   </tr>
@@ -109,21 +109,21 @@ export default function PatientsPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {patients.map((patient) => (
                     <tr key={patient.id}>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                         {patient.nom}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                         {patient.prenom}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">
                         {patient.telephone_normalise}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500 hidden md:table-cell">
                         {format(new Date(patient.date_recrutement), "dd/MM/yyyy", {
                           locale: fr,
                         })}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                         {patient.consentement ? (
                           <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                             Oui
@@ -134,7 +134,7 @@ export default function PatientsPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm font-medium">
                         <button
                           onClick={() => router.push(`/patients/${patient.id}`)}
                           className="text-blue-600 hover:text-blue-900"

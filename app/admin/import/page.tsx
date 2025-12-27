@@ -70,28 +70,31 @@ export default function ImportPage() {
   return (
     <ProtectedRoute requiredRole={UserRole.ADMIN}>
       <Layout>
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">
+        <div>
+          <div className="mb-4 sm:mb-6">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
               Import depuis Google Calendar
             </h1>
-            <p className="mt-2 text-sm text-gray-600">
-              Importez vos renouvellements depuis un export CSV de Google Agenda
+            <p className="mt-2 text-xs sm:text-sm text-gray-600">
+              Importez vos renouvellements depuis un export .ics ou CSV de Google Agenda
             </p>
           </div>
 
-          <div className="bg-white shadow rounded-lg p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4">Instructions</h2>
-            <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
-              <li>Dans Google Calendar, sélectionnez les événements à exporter</li>
-              <li>Allez dans Paramètres → Export</li>
-              <li>Téléchargez le fichier CSV</li>
-              <li>Uploadez le fichier ci-dessous</li>
+          <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+            <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Instructions</h2>
+            <ol className="list-decimal list-inside space-y-2 text-xs sm:text-sm text-gray-700">
+              <li>Allez sur <a href="https://takeout.google.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Google Takeout</a></li>
+              <li>Sélectionnez uniquement &quot;Calendar&quot; en format iCalendar (.ics)</li>
+              <li>Téléchargez et extrayez le fichier ZIP</li>
+              <li>Uploadez le fichier .ics ci-dessous</li>
             </ol>
+            <p className="mt-3 text-xs text-gray-500">
+              💡 Le format .ics (iCalendar) est le format natif d&apos;export de Google Takeout et contient toutes les informations de récurrence.
+            </p>
           </div>
 
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold mb-4">Importer le fichier CSV</h2>
+          <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+            <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Importer le fichier</h2>
 
             {error && (
               <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
@@ -110,13 +113,13 @@ export default function ImportPage() {
                 <input
                   id="file"
                   type="file"
-                  accept=".csv"
+                  accept=".ics,.csv"
                   onChange={handleFileChange}
                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                   required
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Format attendu : CSV exporté depuis Google Calendar
+                  Formats acceptés : .ics (iCalendar) ou .csv exporté depuis Google Calendar
                 </p>
               </div>
 
@@ -151,16 +154,17 @@ export default function ImportPage() {
                       Détails de l&apos;import :
                     </h3>
                     <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            <th className="px-2 sm:px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                               Patient
                             </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            <th className="px-2 sm:px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                               Statut
                             </th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            <th className="px-2 sm:px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                               Erreur
                             </th>
                           </tr>
@@ -168,10 +172,10 @@ export default function ImportPage() {
                         <tbody className="bg-white divide-y divide-gray-200">
                           {result.results.details.map((detail, index) => (
                             <tr key={index}>
-                              <td className="px-3 py-2 whitespace-nowrap text-gray-900">
+                              <td className="px-2 sm:px-3 py-2 text-gray-900">
                                 {detail.patient}
                               </td>
-                              <td className="px-3 py-2 whitespace-nowrap">
+                              <td className="px-2 sm:px-3 py-2 whitespace-nowrap">
                                 {detail.status === "Importé" ? (
                                   <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                                     ✅ {detail.status}
@@ -186,7 +190,7 @@ export default function ImportPage() {
                                   </span>
                                 )}
                               </td>
-                              <td className="px-3 py-2 text-gray-600 text-xs">
+                              <td className="px-2 sm:px-3 py-2 text-gray-600 text-xs">
                                 {detail.error || "-"}
                               </td>
                             </tr>

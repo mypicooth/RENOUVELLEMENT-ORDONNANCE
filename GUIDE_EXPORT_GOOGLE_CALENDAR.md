@@ -14,14 +14,14 @@ Exporter vos événements de renouvellement depuis Google Calendar au format CSV
 2. **Désélectionnez tout** (cliquez sur "Désélectionner tout")
 3. **Cochez uniquement "Calendar"**
 4. Cliquez sur **"Suivant"**
-5. **Format** : Choisissez **"CSV"** (ou gardez .ics et convertissez ensuite)
+5. **Format** : Choisissez **"iCalendar (.ics)"** (format natif, recommandé)
 6. **Fréquence** : Une seule fois
 7. **Type de fichier** : ZIP (par défaut)
 8. Cliquez sur **"Créer l'export"**
 9. Attendez quelques minutes
 10. **Téléchargez** le fichier ZIP
 11. **Extrayez** le ZIP
-12. Trouvez le fichier CSV de votre calendrier
+12. Trouvez le fichier `.ics` de votre calendrier (ex: `calendar.ics`)
 
 ---
 
@@ -40,24 +40,31 @@ Exporter vos événements de renouvellement depuis Google Calendar au format CSV
 
 ---
 
-## 📋 Méthode 3 : Conversion .ics → CSV
+## 📋 Méthode 3 : Utilisation directe du fichier .ics
 
-Si vous avez un fichier `.ics` :
+**✅ Le système supporte maintenant directement les fichiers .ics !**
 
-### Option A : Outil en ligne
+Vous n'avez plus besoin de convertir en CSV. Uploadez directement votre fichier `.ics` exporté depuis Google Takeout.
 
-1. Allez sur https://icaltocsv.com/
-2. Uploadez votre fichier `.ics`
-3. Téléchargez le CSV généré
-
-### Option B : Outil alternatif
-
-- https://convertio.co/fr/ics-csv/
-- https://www.zamzar.com/convert/ics-to-csv/
+Le format `.ics` (iCalendar) est préférable car il contient :
+- ✅ Toutes les informations de récurrence (RRULE)
+- ✅ Les dates de fin de récurrence (UNTIL)
+- ✅ Les descriptions complètes
+- ✅ Les métadonnées complètes des événements
 
 ---
 
-## 📝 Format CSV attendu
+## 📝 Formats supportés
+
+### Format .ics (iCalendar) - Recommandé ✅
+
+Le fichier `.ics` exporté depuis Google Takeout contient automatiquement :
+- ✅ **SUMMARY** : Nom du patient (format: "Nom Prénom")
+- ✅ **DTSTART** : Date et heure de début
+- ✅ **RRULE** : Règle de récurrence (ex: `FREQ=WEEKLY;INTERVAL=3;UNTIL=20241231`)
+- ✅ **DESCRIPTION** : Description (peut contenir le téléphone)
+
+### Format CSV (Alternative)
 
 Le fichier CSV doit contenir au minimum ces colonnes :
 
@@ -81,8 +88,15 @@ Subject,Start Date,Start Time,End Date,End Time,All Day Event,Recurrence Pattern
 
 ---
 
-## 🔍 Vérifier votre CSV
+## 🔍 Vérifier votre fichier
 
+### Pour les fichiers .ics :
+- Ouvrez le fichier dans un éditeur de texte (Notepad++, VS Code, etc.)
+- Vérifiez que les événements commencent par `BEGIN:VEVENT`
+- Vérifiez que les noms sont dans `SUMMARY:`
+- Vérifiez que les récurrences sont dans `RRULE:`
+
+### Pour les fichiers CSV :
 Avant l'import, ouvrez le fichier CSV dans Excel ou LibreOffice pour vérifier :
 
 1. ✅ Les colonnes sont présentes
@@ -96,9 +110,11 @@ Avant l'import, ouvrez le fichier CSV dans Excel ou LibreOffice pour vérifier :
 
 1. **Connectez-vous en tant qu'admin**
 2. Allez dans **Admin** → **Import Google Calendar**
-3. **Sélectionnez votre fichier CSV**
+3. **Sélectionnez votre fichier .ics** (ou .csv)
 4. Cliquez sur **"Importer"**
 5. Consultez les résultats
+
+**💡 Astuce** : Le format `.ics` est préférable car il contient toutes les informations de récurrence automatiquement.
 
 ---
 
@@ -113,6 +129,11 @@ Avant l'import, ouvrez le fichier CSV dans Excel ou LibreOffice pour vérifier :
 ---
 
 ## 🆘 Dépannage
+
+### Le fichier .ics n'est pas reconnu
+- Vérifiez que c'est bien un fichier `.ics` (pas `.zip`)
+- Si vous avez un ZIP, extrayez-le d'abord
+- Vérifiez que le fichier commence par `BEGIN:VCALENDAR`
 
 ### Le fichier CSV n'est pas reconnu
 - Vérifiez que c'est bien un fichier CSV (pas Excel .xlsx)

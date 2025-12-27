@@ -7,6 +7,8 @@ import { parse } from "csv-parse/sync";
 import { normalizePhone } from "@/lib/phone";
 import { createPrescriptionCycle } from "@/lib/prescription";
 import { parse as parseDate } from "date-fns";
+// @ts-ignore - ical.js n'a pas de types TypeScript officiels
+import ICAL from "ical.js";
 
 interface GoogleCalendarRow {
   "Subject"?: string;
@@ -35,13 +37,141 @@ export async function POST(request: NextRequest) {
     }
 
     const text = await file.text();
+    const fileName = file.name.toLowerCase();
     
-    // Parser le CSV
-    const records = parse(text, {
-      columns: true,
-      skip_empty_lines: true,
-      trim: true,
-    }) as GoogleCalendarRow[];
+    // Détecter le type de fichier
+    const isICS = fileName.endsWith(".ics");
+    const isCSV = fileName.endsWith(".csv");
+    
+    if (!isICS && !isCSV) {
+      return NextResponse.json(
+        { error: "Format de fichier non supporté. Utilisez .ics ou .csv" },
+        { status: 400 }
+      );
+    }
+
+    let events: Array<{
+      subject: string;
+      startDate: Date;
+      description?: string;
+      recurrence?: string;
+      rrule?: any;
+    }> = [];
+
+    if (isICS) {
+      // Parser le fichier iCalendar (.ics)
+      try {
+        const jcalData = ICAL.parse(text);
+        const comp = new ICAL.Component(jcalData);
+        const vevents = comp.getAllSubcomponents("vevent");
+
+        for (const vevent of vevents) {
+          const event = new ICAL.Event(vevent);
+          const summary = event.summary || "";
+          const startDate = event.startDate.toJSDate();
+          const description = vevent.getFirstPropertyValue("description") || "";
+          
+          // Extraire la règle de récurrence (RRULE)
+          const rruleProp = vevent.getFirstProperty("rrule");
+          let rrule = null;
+          if (rruleProp) {
+            rrule = rruleProp.getFirstValue();
+          }
+
+          // Extraire UNTIL si présent dans RRULE
+          let untilDate: Date | null = null;
+          if (rrule && rrule.until) {
+            untilDate = rrule.until.toJSDate();
+          }
+
+          // Calculer les occurrences si récurrence
+          let nbOccurrences = 0;
+          let intervalleJours = 21;
+          
+          if (rrule) {
+            // Détecter l'intervalle (FREQ=WEEKLY;INTERVAL=3)
+            if (rrule.freq === "WEEKLY" && rrule.interval) {
+              intervalleJours = rrule.interval * 7;
+            }
+            
+            // Calculer le nombre d'occurrences
+            if (untilDate) {
+              const diffTime = untilDate.getTime() - startDate.getTime();
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              nbOccurrences = Math.floor(diffDays / intervalleJours);
+            } else if (rrule.count) {
+              nbOccurrences = rrule.count - 1; // -1 car R0 est déjà compté
+            } else {
+              // Par défaut, 12 renouvellements
+              nbOccurrences = 12;
+            }
+          }
+
+          events.push({
+            subject: summary,
+            startDate,
+            description,
+            recurrence: rrule ? JSON.stringify(rrule) : undefined,
+            rrule: rrule ? { ...rrule, nbOccurrences, intervalleJours } : undefined,
+          });
+        }
+      } catch (error: any) {
+        return NextResponse.json(
+          { error: `Erreur lors du parsing du fichier .ics: ${error.message}` },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Parser le CSV
+      const records = parse(text, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+      }) as GoogleCalendarRow[];
+
+      // Convertir les enregistrements CSV en format événement
+      for (const record of records) {
+        const subject = record["Subject"] || record["subject"] || "";
+        const startDateStr = record["Start Date"] || record["Start date"] || record["start_date"] || "";
+        const description = record["Description"] || record["description"] || "";
+        const recurrencePattern = record["Recurrence Pattern"] || record["recurrence"] || "";
+
+        if (!subject || !startDateStr) continue;
+
+        let startDate: Date;
+        try {
+          if (startDateStr.includes("/")) {
+            const parts = startDateStr.split("/");
+            if (parts.length === 3) {
+              startDate = new Date(
+                parseInt(parts[2]),
+                parseInt(parts[1]) - 1,
+                parseInt(parts[0])
+              );
+            } else {
+              startDate = parseDate(startDateStr, "dd/MM/yyyy", new Date());
+            }
+          } else if (startDateStr.includes("-")) {
+            startDate = new Date(startDateStr);
+          } else {
+            startDate = new Date(startDateStr);
+          }
+          
+          if (isNaN(startDate.getTime())) {
+            continue;
+          }
+        } catch {
+          continue;
+        }
+
+        events.push({
+          subject,
+          startDate,
+          description,
+          recurrence: recurrencePattern,
+        });
+      }
+    }
 
     const results = {
       success: 0,
@@ -49,11 +179,11 @@ export async function POST(request: NextRequest) {
       details: [] as Array<{ patient: string; status: string; error?: string }>,
     };
 
-    // Traiter chaque ligne
-    for (const record of records) {
+    // Traiter chaque événement
+    for (const event of events) {
       try {
         // Extraire les informations du sujet (format: "Nom Prénom" ou "Prénom Nom")
-        const subject = record["Subject"] || record["subject"] || "";
+        const subject = event.subject || "";
         if (!subject.trim()) {
           results.errors++;
           results.details.push({
@@ -80,52 +210,16 @@ export async function POST(request: NextRequest) {
         const prenom = nameParts[nameParts.length - 1];
         const nom = nameParts.slice(0, -1).join(" ");
 
-        // Extraire la date de début
-        const startDateStr = record["Start Date"] || record["Start date"] || record["start_date"] || "";
-        if (!startDateStr) {
+        // Utiliser la date de l'événement
+        const startDate = event.startDate;
+        
+        // Vérifier que la date est valide
+        if (isNaN(startDate.getTime())) {
           results.errors++;
           results.details.push({
             patient: `${nom} ${prenom}`,
             status: "Erreur",
-            error: "Date de début manquante",
-          });
-          continue;
-        }
-
-        // Parser la date (formats possibles: YYYY-MM-DD, DD/MM/YYYY, etc.)
-        let startDate: Date;
-        try {
-          // Essayer différents formats
-          if (startDateStr.includes("/")) {
-            // Format DD/MM/YYYY ou MM/DD/YYYY
-            const parts = startDateStr.split("/");
-            if (parts.length === 3) {
-              // Supposons DD/MM/YYYY
-              startDate = new Date(
-                parseInt(parts[2]),
-                parseInt(parts[1]) - 1,
-                parseInt(parts[0])
-              );
-            } else {
-              startDate = parseDate(startDateStr, "dd/MM/yyyy", new Date());
-            }
-          } else if (startDateStr.includes("-")) {
-            // Format YYYY-MM-DD
-            startDate = new Date(startDateStr);
-          } else {
-            startDate = new Date(startDateStr);
-          }
-          
-          // Vérifier que la date est valide
-          if (isNaN(startDate.getTime())) {
-            throw new Error("Date invalide");
-          }
-        } catch (error) {
-          results.errors++;
-          results.details.push({
-            patient: `${nom} ${prenom}`,
-            status: "Erreur",
-            error: `Date invalide: ${startDateStr}`,
+            error: "Date invalide",
           });
           continue;
         }
@@ -144,7 +238,7 @@ export async function POST(request: NextRequest) {
         // Si le patient n'existe pas, le créer
         if (!patient) {
           // Essayer d'extraire le téléphone depuis la description
-          const description = record["Description"] || record["description"] || "";
+          const description = event.description || "";
           const phoneMatch = description.match(/(\+33|0)[1-9]([.\s-]?\d{2}){4}/);
           const telephone = phoneMatch ? phoneMatch[0].replace(/[.\s-]/g, "") : "";
 
@@ -181,11 +275,16 @@ export async function POST(request: NextRequest) {
         }
 
         // Analyser le pattern de récurrence
-        const recurrencePattern = record["Recurrence Pattern"] || record["recurrence"] || "";
         let nbRenouvellements = 0;
         let intervalleJours = 21;
 
-        if (recurrencePattern) {
+        if (event.rrule) {
+          // Utiliser les données RRULE déjà parsées
+          intervalleJours = event.rrule.intervalleJours || 21;
+          nbRenouvellements = event.rrule.nbOccurrences || 12;
+        } else if (event.recurrence) {
+          // Parser le pattern de récurrence texte (CSV)
+          const recurrencePattern = event.recurrence;
           // Exemple: "Every 3 weeks" ou "Toutes les 3 semaines"
           const weeksMatch = recurrencePattern.match(/(\d+)\s*(week|semaine)/i);
           if (weeksMatch) {
@@ -254,7 +353,7 @@ export async function POST(request: NextRequest) {
       } catch (error: any) {
         results.errors++;
         results.details.push({
-          patient: record["Subject"] || "Inconnu",
+          patient: event.subject || "Inconnu",
           status: "Erreur",
           error: error.message || "Erreur inconnue",
         });

@@ -143,20 +143,20 @@ export default function HomePage() {
   return (
     <ProtectedRoute>
       <Layout>
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="sm:flex sm:items-center sm:justify-between mb-6">
+        <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                 Planning du jour
               </h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-xs sm:text-sm text-gray-500">
                 {format(new Date(), "EEEE d MMMM yyyy", { locale: fr })}
               </p>
             </div>
-            <div className="mt-4 sm:mt-0 flex gap-2">
+            <div className="flex gap-2">
               <button
                 onClick={() => router.push("/planning/semaine")}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="flex-1 sm:flex-none px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
               >
                 Voir la semaine
               </button>
@@ -170,32 +170,32 @@ export default function HomePage() {
               Aucun renouvellement prévu aujourd&apos;hui
             </div>
           ) : (
-            <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            <div className="bg-white shadow overflow-hidden sm:rounded-md overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Nom
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Prénom
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">
                       Téléphone
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Statut
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
                       Consentement
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap hidden lg:table-cell">
                       SMS envoyé
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap hidden xl:table-cell">
                       Notes
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Actions
                     </th>
                   </tr>
@@ -203,7 +203,7 @@ export default function HomePage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {renewals.map((renewal) => (
                     <tr key={renewal.id}>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                         <button
                           onClick={() => router.push(`/patients/${renewal.prescriptionCycle.patient.id}`)}
                           className="text-blue-600 hover:text-blue-900"
@@ -211,13 +211,13 @@ export default function HomePage() {
                           {renewal.prescriptionCycle.patient.nom}
                         </button>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                         {renewal.prescriptionCycle.patient.prenom}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">
                         {renewal.prescriptionCycle.patient.telephone_normalise}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                             STATUT_COLORS[renewal.statut]
@@ -226,7 +226,7 @@ export default function HomePage() {
                           {STATUT_LABELS[renewal.statut]}
                         </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap hidden md:table-cell">
                         {renewal.prescriptionCycle?.patient?.consentement ? (
                           <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                             ✓ Oui
@@ -237,7 +237,7 @@ export default function HomePage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500 hidden lg:table-cell">
                         {renewal.date_sms ? (
                           <div>
                             <div className="font-medium">
@@ -251,10 +251,10 @@ export default function HomePage() {
                           <span className="text-gray-600">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
+                      <td className="px-2 sm:px-4 py-3 text-sm text-gray-500 hidden xl:table-cell">
                         {renewal.prescriptionCycle.patient.notes || "-"}
                       </td>
-                      <td className="px-4 py-3 text-sm font-medium">
+                      <td className="px-2 sm:px-4 py-3 text-sm font-medium">
                         <div className="space-y-2">
                           <div className="flex gap-2 flex-wrap">
                             {renewal.statut === "A_PREPARER" && (
