@@ -9,12 +9,21 @@ const globalForPrisma = globalThis as unknown as {
 let databaseUrl = process.env.DATABASE_URL;
 
 if (process.env.NODE_ENV === "production" && databaseUrl) {
-  // Si l'URL ne contient pas déjà de paramètres de query, ajouter ?connection_limit=1
-  // Cela force Prisma à désactiver les prepared statements
-  if (!databaseUrl.includes("?")) {
-    databaseUrl = `${databaseUrl}?connection_limit=1&pool_timeout=20`;
-  } else if (!databaseUrl.includes("connection_limit")) {
-    databaseUrl = `${databaseUrl}&connection_limit=1&pool_timeout=20`;
+  // Pour Supabase avec connection pooling (port 6543 ou "pooler" dans l'URL), ajouter pgbouncer=true
+  // Cela désactive automatiquement les prepared statements
+  if (databaseUrl.includes(":6543") || databaseUrl.includes("pooler") || databaseUrl.includes("supabase")) {
+    if (!databaseUrl.includes("pgbouncer=true")) {
+      databaseUrl = databaseUrl.includes("?")
+        ? `${databaseUrl}&pgbouncer=true`
+        : `${databaseUrl}?pgbouncer=true`;
+    }
+  } else {
+    // Pour les autres connexions, ajouter connection_limit=1
+    if (!databaseUrl.includes("?")) {
+      databaseUrl = `${databaseUrl}?connection_limit=1&pool_timeout=20`;
+    } else if (!databaseUrl.includes("connection_limit")) {
+      databaseUrl = `${databaseUrl}&connection_limit=1&pool_timeout=20`;
+    }
   }
 }
 

@@ -14,13 +14,23 @@ La meilleure solution est d'utiliser le **Connection Pooling** de Supabase qui d
    - Allez dans **Settings** → **Database**
    - Trouvez la section **Connection Pooling**
    - Copiez l'URL de connection pooling (port **6543**)
+   - ⚠️ **IMPORTANT** : Utilisez le port **6543** (connection pooling), pas le port 5432
 
 2. **Dans Vercel** :
    - Allez dans **Settings** → **Environment Variables**
    - Mettez à jour `DATABASE_URL` avec l'URL de connection pooling
    - Format : `postgresql://user:password@db.xxx.supabase.co:6543/postgres?pgbouncer=true`
+   - Le code ajoutera automatiquement `pgbouncer=true` si le port est 6543
 
 3. **Redéployez** votre application
+
+### Vérification
+
+Après le déploiement, l'erreur ne devrait plus apparaître. Si elle persiste :
+
+1. Vérifiez que vous utilisez bien le connection pooling (port 6543)
+2. Vérifiez que `DATABASE_URL` contient `pgbouncer=true` ou que le port est 6543
+3. Videz le cache de build sur Vercel et redéployez
 
 ## Solution alternative : Configuration Prisma
 
