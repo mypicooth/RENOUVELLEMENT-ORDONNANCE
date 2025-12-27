@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
@@ -85,6 +85,20 @@ export default function PatientDetailPage() {
   const [consents, setConsents] = useState<Consent[]>([]);
   const [loadingConsents, setLoadingConsents] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [showNewCycle, setShowNewCycle] = useState(false);
+  const [creatingCycle, setCreatingCycle] = useState(false);
+  const [newCycleData, setNewCycleData] = useState({
+    date_premiere_delivrance: format(new Date(), "yyyy-MM-dd"),
+    nb_renouvellements: "12",
+    intervalle_jours: "21",
+  });
+  const [duplicatePatients, setDuplicatePatients] = useState<Array<{
+    id: string;
+    nom: string;
+    prenom: string;
+    telephone_normalise: string;
+  }>>([]);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const isAdmin = session?.user.role === UserRole.ADMIN;
 
   const loadPatient = useCallback(async () => {
@@ -190,7 +204,57 @@ export default function PatientDetailPage() {
     }
   }, [patient]);
 
+  // Vérifier les doublons par nom de famille (pour l'édition)
+  const checkDuplicates = useCallback(async (nom: string, currentPatientId: string) => {
+    if (!nom || nom.trim().length < 2) {
+      setDuplicatePatients([]);
+      return;
+    }
+
+    setCheckingDuplicates(true);
+    try {
+      const res = await fetch(`/api/patients/check-duplicate?nom=${encodeURIComponent(nom.trim())}`);
+      if (res.ok) {
+        const duplicates = await res.json();
+        // Filtrer le patient actuel de la liste des doublons
+        const filtered = duplicates.filter((p: { id: string }) => p.id !== currentPatientId);
+        setDuplicatePatients(filtered);
+      }
+    } catch (error) {
+      console.error("Erreur vérification doublons:", error);
+    } finally {
+      setCheckingDuplicates(false);
+    }
+  }, []);
+
+  // Debounce pour éviter trop de requêtes
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+  const handleNomChange = (value: string) => {
+    setFormData({ ...formData, nom: value });
+    
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+    
+    if (params.id) {
+      debounceTimeout.current = setTimeout(() => {
+        checkDuplicates(value, params.id as string);
+      }, 500);
+    }
+  };
+
   const handleSave = async () => {
+    // Vérifier les doublons avant de sauvegarder
+    if (duplicatePatients.length > 0) {
+      const confirmMessage = `⚠️ Attention : ${duplicatePatients.length} autre(s) patient(s) avec le nom "${formData.nom}" existe(nt) déjà.\n\n` +
+        duplicatePatients.map((p) => `- ${p.prenom} ${p.nom} (${p.telephone_normalise})`).join("\n") +
+        `\n\nVoulez-vous vraiment continuer la modification ?`;
+      
+      if (!confirm(confirmMessage)) {
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const res = await fetch(`/api/patients/${params.id}`, {
@@ -203,6 +267,7 @@ export default function PatientDetailPage() {
         const data = await res.json();
         setPatient(data);
         setEditing(false);
+        setDuplicatePatients([]); // Réinitialiser les doublons après sauvegarde
         alert("Patient mis à jour avec succès");
       } else {
         const error = await res.json();
@@ -259,6 +324,46 @@ export default function PatientDetailPage() {
       }
     } catch (error) {
       alert("Erreur lors de la suppression");
+    }
+  };
+
+  const handleCreateNewCycle = async () => {
+    if (!newCycleData.date_premiere_delivrance || !newCycleData.nb_renouvellements) {
+      alert("Veuillez remplir tous les champs obligatoires");
+      return;
+    }
+
+    setCreatingCycle(true);
+    try {
+      const res = await fetch("/api/patients/cycles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: params.id,
+          date_premiere_delivrance: newCycleData.date_premiere_delivrance,
+          nb_renouvellements: parseInt(newCycleData.nb_renouvellements),
+          intervalle_jours: parseInt(newCycleData.intervalle_jours) || 21,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert("Nouveau cycle de prescription créé avec succès");
+        setShowNewCycle(false);
+        setNewCycleData({
+          date_premiere_delivrance: format(new Date(), "yyyy-MM-dd"),
+          nb_renouvellements: "12",
+          intervalle_jours: "21",
+        });
+        loadPatient();
+      } else {
+        alert(data.error || "Erreur lors de la création du cycle");
+      }
+    } catch (error) {
+      console.error("Erreur création cycle:", error);
+      alert("Erreur lors de la création du cycle");
+    } finally {
+      setCreatingCycle(false);
     }
   };
 
@@ -372,9 +477,39 @@ export default function PatientDetailPage() {
                       type="text"
                       required
                       value={formData.nom}
-                      onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      onChange={(e) => handleNomChange(e.target.value)}
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                        duplicatePatients.length > 0
+                          ? "border-yellow-400 bg-yellow-50"
+                          : "border-gray-300"
+                      }`}
                     />
+                    {checkingDuplicates && (
+                      <p className="mt-1 text-xs text-gray-500">Vérification des doublons...</p>
+                    )}
+                    {duplicatePatients.length > 0 && !checkingDuplicates && (
+                      <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                        <p className="text-sm font-medium text-yellow-800 mb-2">
+                          ⚠️ {duplicatePatients.length} autre(s) patient(s) avec le nom &quot;{formData.nom}&quot; existe(nt) :
+                        </p>
+                        <ul className="space-y-1 text-xs text-yellow-700">
+                          {duplicatePatients.map((dup) => (
+                            <li key={dup.id} className="flex items-center justify-between">
+                              <span>
+                                {dup.prenom} {dup.nom} - {dup.telephone_normalise}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => router.push(`/patients/${dup.id}`)}
+                                className="ml-2 text-blue-600 hover:text-blue-900 hover:underline"
+                              >
+                                Voir
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -537,7 +672,93 @@ export default function PatientDetailPage() {
           </div>
 
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-semibold mb-4">Cycles de prescription</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Cycles de prescription</h2>
+              <button
+                onClick={() => setShowNewCycle(!showNewCycle)}
+                className="px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
+              >
+                {showNewCycle ? "Annuler" : "➕ Nouvelle ordonnance"}
+              </button>
+            </div>
+
+            {showNewCycle && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="text-md font-semibold text-gray-900 mb-4">
+                  Créer un nouveau cycle de prescription
+                </h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Date 1ère délivrance (R0) *
+                    </label>
+                    <input
+                      type="date"
+                      value={newCycleData.date_premiere_delivrance}
+                      onChange={(e) =>
+                        setNewCycleData({
+                          ...newCycleData,
+                          date_premiere_delivrance: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nombre de renouvellements *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newCycleData.nb_renouvellements}
+                      onChange={(e) =>
+                        setNewCycleData({
+                          ...newCycleData,
+                          nb_renouvellements: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Intervalle (jours)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newCycleData.intervalle_jours}
+                      onChange={(e) =>
+                        setNewCycleData({
+                          ...newCycleData,
+                          intervalle_jours: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    onClick={() => setShowNewCycle(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleCreateNewCycle}
+                    disabled={creatingCycle}
+                    className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {creatingCycle ? "Création..." : "Créer le cycle"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {patient.cycles.length === 0 ? (
               <p className="text-gray-500">Aucun cycle de prescription</p>
             ) : (

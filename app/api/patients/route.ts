@@ -84,19 +84,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vérifier si le patient existe déjà
-    const existing = await prisma.patient.findFirst({
+    // Vérifier si le patient existe déjà par téléphone
+    const existingByPhone = await prisma.patient.findFirst({
       where: {
         telephone_normalise: phoneNormalized,
         actif: true,
       },
     });
 
+    // Vérifier aussi par nom de famille (pour détecter les doublons)
+    const existingByName = await prisma.patient.findMany({
+      where: {
+        nom: {
+          contains: nom.trim(),
+          mode: "insensitive",
+        },
+        actif: true,
+      },
+      take: 5,
+    }).catch(() => {
+      // Fallback si mode insensitive n'est pas supporté
+      return prisma.patient.findMany({
+        where: {
+          nom: {
+            contains: nom.trim(),
+          },
+          actif: true,
+        },
+        take: 5,
+      });
+    });
+
     let patient;
-    if (existing) {
-      // Mettre à jour le patient existant
+    if (existingByPhone) {
+      // Mettre à jour le patient existant (même téléphone)
       patient = await prisma.patient.update({
-        where: { id: existing.id },
+        where: { id: existingByPhone.id },
         data: {
           nom,
           prenom,
@@ -117,6 +140,17 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Retourner aussi les patients avec le même nom pour information
+    const response: any = { patient };
+    if (existingByName.length > 0 && !existingByPhone) {
+      response.duplicates = existingByName.map((p) => ({
+        id: p.id,
+        nom: p.nom,
+        prenom: p.prenom,
+        telephone_normalise: p.telephone_normalise,
+      }));
+    }
+
     // Si date_premiere_delivrance et nb_renouvellements sont fournis, créer le cycle
     if (date_premiere_delivrance && nb_renouvellements !== undefined) {
       const cycle = await createPrescriptionCycle({
@@ -130,10 +164,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         patient,
         cycle,
+        ...(response.duplicates ? { duplicates: response.duplicates } : {}),
       });
     }
 
-    return NextResponse.json({ patient });
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Erreur création patient:", error);
     return NextResponse.json(

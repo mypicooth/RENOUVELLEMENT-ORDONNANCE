@@ -18,6 +18,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { href: "/planning/semaine", label: "Planning semaine" },
     { href: "/patients", label: "Patients" },
     { href: "/patients/new", label: "Nouveau patient" },
+    { href: "/patients/terminated", label: "Patients terminés" },
     ...(isAdmin
       ? [
           { href: "/admin/dashboard", label: "Dashboard KPI" },

@@ -57,6 +57,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [smsTemplates, setSmsTemplates] = useState<SmsTemplate[]>([]);
   const [selectedTemplates, setSelectedTemplates] = useState<Record<string, string>>({});
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   const loadSmsTemplates = useCallback(async () => {
     try {
@@ -144,6 +145,76 @@ export default function HomePage() {
     window.print();
   };
 
+  const handleBulkSendSms = async () => {
+    const patientsWithConsent = renewals.filter(
+      (r) => r.prescriptionCycle?.patient?.consentement
+    );
+
+    if (patientsWithConsent.length === 0) {
+      alert("Aucun patient avec consentement SMS dans le planning du jour");
+      return;
+    }
+
+    if (!confirm(`Envoyer un SMS à ${patientsWithConsent.length} patient(s) ?`)) {
+      return;
+    }
+
+    setBulkActionLoading(true);
+    try {
+      const results: Array<{ success: boolean; patientName: string; error?: string }> = [];
+
+      for (const renewal of patientsWithConsent) {
+        try {
+          const smsRes = await fetch("/api/sms/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ renewalEventId: renewal.id }),
+          });
+
+          const smsData = await smsRes.json();
+          if (smsData.success) {
+            results.push({
+              success: true,
+              patientName: `${renewal.prescriptionCycle.patient.prenom} ${renewal.prescriptionCycle.patient.nom}`,
+            });
+          } else {
+            results.push({
+              success: false,
+              patientName: `${renewal.prescriptionCycle.patient.prenom} ${renewal.prescriptionCycle.patient.nom}`,
+              error: smsData.error || "Erreur inconnue",
+            });
+          }
+        } catch (error) {
+          results.push({
+            success: false,
+            patientName: `${renewal.prescriptionCycle.patient.prenom} ${renewal.prescriptionCycle.patient.nom}`,
+            error: error instanceof Error ? error.message : "Erreur inconnue",
+          });
+        }
+      }
+
+      const successCount = results.filter((r) => r.success).length;
+      const failCount = results.length - successCount;
+
+      if (failCount > 0) {
+        const failedPatients = results
+          .filter((r) => !r.success)
+          .map((r) => `- ${r.patientName}: ${r.error || "Erreur"}`)
+          .join("\n");
+        alert(`Résultats :\n${successCount} succès\n${failCount} échec(s)\n\nÉchecs :\n${failedPatients}`);
+      } else {
+        alert(`✅ ${successCount} SMS envoyé(s) avec succès`);
+      }
+
+      loadTodayRenewals();
+    } catch (error) {
+      console.error("Erreur envoi SMS en bloc:", error);
+      alert("Erreur lors de l'envoi des SMS");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   return (
     <ProtectedRoute>
       <Layout>
@@ -181,6 +252,13 @@ export default function HomePage() {
                 className="flex-1 sm:flex-none px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 no-print"
               >
                 🖨️ Imprimer
+              </button>
+              <button
+                onClick={handleBulkSendSms}
+                disabled={bulkActionLoading || renewals.filter((r) => r.prescriptionCycle?.patient?.consentement).length === 0}
+                className="flex-1 sm:flex-none px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-white hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed no-print"
+              >
+                {bulkActionLoading ? "Envoi..." : "📱 SMS de masse"}
               </button>
               <button
                 onClick={() => router.push("/planning/semaine")}
@@ -234,14 +312,22 @@ export default function HomePage() {
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                         <button
                           onClick={() => router.push(`/patients/${renewal.prescriptionCycle.patient.id}`)}
-                          className="text-blue-600 hover:text-blue-900 no-print"
+                          className="text-blue-600 hover:text-blue-900 no-print font-semibold hover:underline"
+                          title="Voir la fiche patient"
                         >
                           {renewal.prescriptionCycle.patient.nom}
                         </button>
                         <span className="print-only">{renewal.prescriptionCycle.patient.nom}</span>
                       </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                        {renewal.prescriptionCycle.patient.prenom}
+                        <button
+                          onClick={() => router.push(`/patients/${renewal.prescriptionCycle.patient.id}`)}
+                          className="text-blue-600 hover:text-blue-900 no-print hover:underline"
+                          title="Voir la fiche patient"
+                        >
+                          {renewal.prescriptionCycle.patient.prenom}
+                        </button>
+                        <span className="print-only">{renewal.prescriptionCycle.patient.prenom}</span>
                       </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">
                         {renewal.prescriptionCycle.patient.telephone_normalise}
@@ -286,6 +372,13 @@ export default function HomePage() {
                       <td className="px-2 sm:px-4 py-3 text-sm font-medium">
                         <div className="space-y-2 no-print">
                           <div className="flex gap-2 flex-wrap">
+                            <button
+                              onClick={() => router.push(`/patients/${renewal.prescriptionCycle.patient.id}`)}
+                              className="px-3 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 rounded hover:bg-indigo-200"
+                              title="Voir la fiche patient"
+                            >
+                              👤 Fiche
+                            </button>
                             {renewal.statut === "A_PREPARER" && (
                               <button
                                 onClick={() =>

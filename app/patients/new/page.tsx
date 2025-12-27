@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
 import { normalizePhone } from "@/lib/phone";
@@ -28,11 +28,66 @@ export default function NewPatientPage() {
   const [consentEndDate, setConsentEndDate] = useState("");
   const [useRevocation, setUseRevocation] = useState(false);
   const signatureRef = useRef<SignatureCanvas>(null);
+  const [duplicatePatients, setDuplicatePatients] = useState<Array<{
+    id: string;
+    nom: string;
+    prenom: string;
+    telephone_normalise: string;
+    date_recrutement: string;
+  }>>([]);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+
+  // Vérifier les doublons par nom de famille
+  const checkDuplicates = useCallback(async (nom: string) => {
+    if (!nom || nom.trim().length < 2) {
+      setDuplicatePatients([]);
+      return;
+    }
+
+    setCheckingDuplicates(true);
+    try {
+      const res = await fetch(`/api/patients/check-duplicate?nom=${encodeURIComponent(nom.trim())}`);
+      if (res.ok) {
+        const duplicates = await res.json();
+        setDuplicatePatients(duplicates);
+      }
+    } catch (error) {
+      console.error("Erreur vérification doublons:", error);
+    } finally {
+      setCheckingDuplicates(false);
+    }
+  }, []);
+
+  // Debounce pour éviter trop de requêtes
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+  const handleNomChange = (value: string) => {
+    setFormData({ ...formData, nom: value });
+    
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+    
+    debounceTimeout.current = setTimeout(() => {
+      checkDuplicates(value);
+    }, 500); // Attendre 500ms après la dernière frappe
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+
+    // Vérifier les doublons avant de créer
+    if (duplicatePatients.length > 0) {
+      const confirmMessage = `⚠️ Attention : ${duplicatePatients.length} patient(s) avec le nom "${formData.nom}" existe(nt) déjà.\n\n` +
+        duplicatePatients.map((p) => `- ${p.prenom} ${p.nom} (${p.telephone_normalise})`).join("\n") +
+        `\n\nVoulez-vous vraiment créer un nouveau patient ?`;
+      
+      if (!confirm(confirmMessage)) {
+        setLoading(false);
+        return;
+      }
+    }
 
     // Validation
     if (!formData.consentement) {
@@ -134,11 +189,43 @@ export default function NewPatientPage() {
                     type="text"
                     required
                     value={formData.nom}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nom: e.target.value })
-                    }
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    onChange={(e) => handleNomChange(e.target.value)}
+                    className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                      duplicatePatients.length > 0
+                        ? "border-yellow-400 bg-yellow-50"
+                        : "border-gray-300"
+                    }`}
+                    placeholder="Nom de famille"
                   />
+                  {checkingDuplicates && (
+                    <p className="mt-1 text-xs text-gray-500">Vérification des doublons...</p>
+                  )}
+                  {duplicatePatients.length > 0 && !checkingDuplicates && (
+                    <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <p className="text-sm font-medium text-yellow-800 mb-2">
+                        ⚠️ {duplicatePatients.length} patient(s) avec le nom &quot;{formData.nom}&quot; existe(nt) déjà :
+                      </p>
+                      <ul className="space-y-1 text-xs text-yellow-700">
+                        {duplicatePatients.map((dup) => (
+                          <li key={dup.id} className="flex items-center justify-between">
+                            <span>
+                              {dup.prenom} {dup.nom} - {dup.telephone_normalise}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => router.push(`/patients/${dup.id}`)}
+                              className="ml-2 text-blue-600 hover:text-blue-900 hover:underline"
+                            >
+                              Voir
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="mt-2 text-xs text-yellow-700">
+                        Vous pouvez continuer la création si c&apos;est un patient différent.
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
