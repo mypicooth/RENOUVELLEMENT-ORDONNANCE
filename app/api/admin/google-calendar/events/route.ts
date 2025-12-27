@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { calendarId, timeMin, timeMax } = body;
+    const { calendarId, timeMin, timeMax, eventType = "RENOUVELLEMENT" } = body;
 
     // Récupérer les tokens depuis les cookies
     const accessToken = request.cookies.get("google_access_token")?.value;
@@ -193,44 +193,84 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Vérifier si un cycle existe déjà pour ce patient avec cette date R0
-        const existingCycle = await prisma.prescriptionCycle.findFirst({
-          where: {
-            patient_id: patient.id,
-            date_premiere_delivrance: {
-              gte: new Date(start.getFullYear(), start.getMonth(), start.getDate()),
-              lt: new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1),
+        if (eventType === "FACTURATION_FUTURE") {
+          // Créer un rappel de facturation (one-shot)
+          // Vérifier si un rappel existe déjà pour ce patient avec cette date
+          const existingReminder = await prisma.billingReminder.findFirst({
+            where: {
+              patient_id: patient.id,
+              date_rappel: {
+                gte: new Date(start.getFullYear(), start.getMonth(), start.getDate()),
+                lt: new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1),
+              },
             },
-          },
-        });
+          });
 
-        if (existingCycle) {
+          if (existingReminder) {
+            results.details.push({
+              patient: `${nom} ${prenom}`,
+              status: "Ignoré",
+              error: "Rappel de facturation déjà existant pour cette date",
+            });
+            continue;
+          }
+
+          // Créer le rappel de facturation
+          await prisma.billingReminder.create({
+            data: {
+              patient_id: patient.id,
+              date_rappel: start,
+              notes: description || undefined,
+              created_by: session.user.id,
+            },
+          });
+
+          results.success++;
           results.details.push({
             patient: `${nom} ${prenom}`,
-            status: "Ignoré",
-            error: "Cycle déjà existant pour cette date",
-            firstRenewalDate: start.toISOString().split("T")[0],
-            nbOccurrences: nbRenouvellements + 1,
+            status: "Importé",
           });
-          continue;
+        } else {
+          // RENOUVELLEMENT : Créer un cycle de prescription
+          // Vérifier si un cycle existe déjà pour ce patient avec cette date R0
+          const existingCycle = await prisma.prescriptionCycle.findFirst({
+            where: {
+              patient_id: patient.id,
+              date_premiere_delivrance: {
+                gte: new Date(start.getFullYear(), start.getMonth(), start.getDate()),
+                lt: new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1),
+              },
+            },
+          });
+
+          if (existingCycle) {
+            results.details.push({
+              patient: `${nom} ${prenom}`,
+              status: "Ignoré",
+              error: "Cycle déjà existant pour cette date",
+              firstRenewalDate: start.toISOString().split("T")[0],
+              nbOccurrences: nbRenouvellements + 1,
+            });
+            continue;
+          }
+
+          // Créer le cycle de prescription
+          await createPrescriptionCycle({
+            patientId: patient.id,
+            datePremiereDelivrance: start,
+            nbRenouvellements: nbRenouvellements,
+            intervalleJours: intervalleJours,
+            createdBy: session.user.id,
+          });
+
+          results.success++;
+          results.details.push({
+            patient: `${nom} ${prenom}`,
+            status: "Importé",
+            firstRenewalDate: start.toISOString().split("T")[0], // Date R0 au format YYYY-MM-DD
+            nbOccurrences: nbRenouvellements + 1, // +1 car R0 est inclus
+          });
         }
-
-        // Créer le cycle de prescription
-        await createPrescriptionCycle({
-          patientId: patient.id,
-          datePremiereDelivrance: start,
-          nbRenouvellements: nbRenouvellements,
-          intervalleJours: intervalleJours,
-          createdBy: session.user.id,
-        });
-
-        results.success++;
-        results.details.push({
-          patient: `${nom} ${prenom}`,
-          status: "Importé",
-          firstRenewalDate: start.toISOString().split("T")[0], // Date R0 au format YYYY-MM-DD
-          nbOccurrences: nbRenouvellements + 1, // +1 car R0 est inclus
-        });
       } catch (error: any) {
         results.errors++;
         results.details.push({

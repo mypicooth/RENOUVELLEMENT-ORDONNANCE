@@ -36,6 +36,7 @@ function ImportPageContent() {
   const [importStartDate, setImportStartDate] = useState<string>(
     new Date().toISOString().split("T")[0] // Date du jour par défaut
   );
+  const [eventType, setEventType] = useState<"RENOUVELLEMENT" | "FACTURATION_FUTURE">("RENOUVELLEMENT");
 
   useEffect(() => {
     const checkGoogleAuth = async () => {
@@ -212,6 +213,24 @@ function ImportPageContent() {
               </p>
             </div>
             <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Type d&apos;événement
+                </label>
+                <select
+                  value={eventType}
+                  onChange={(e) => setEventType(e.target.value as "RENOUVELLEMENT" | "FACTURATION_FUTURE")}
+                  className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 w-full"
+                >
+                  <option value="RENOUVELLEMENT">Renouvellement (crée un cycle de prescription)</option>
+                  <option value="FACTURATION_FUTURE">Facturation future (rappel de facturation one-shot)</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  {eventType === "RENOUVELLEMENT"
+                    ? "Crée un cycle de prescription avec renouvellements"
+                    : "Crée uniquement un rappel de facturation pour une ordonnance one-shot"}
+                </p>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Date de début d&apos;import

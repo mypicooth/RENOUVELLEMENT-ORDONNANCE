@@ -11,20 +11,21 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  password      String
-  role          String   @default("STAFF") // ADMIN, STAFF
-  nom           String?
-  prenom        String?
-  actif         Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      String   @default("STAFF") // ADMIN, STAFF
+  nom       String?
+  prenom    String?
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  createdCycles PrescriptionCycle[] @relation("CreatedBy")
-  sentSms       SmsLog[]            @relation("SentBy")
-  createdConsents PatientConsent[]  @relation("ConsentCreatedBy")
-  revokedConsents PatientConsent[] @relation("ConsentRevokedBy")
+  createdCycles           PrescriptionCycle[] @relation("CreatedBy")
+  sentSms                 SmsLog[]            @relation("SentBy")
+  createdConsents         PatientConsent[]    @relation("ConsentCreatedBy")
+  revokedConsents         PatientConsent[]    @relation("ConsentRevokedBy")
+  createdBillingReminders BillingReminder[]   @relation("BillingReminderCreatedBy")
 
   @@map("users")
 }
@@ -41,27 +42,28 @@ model Patient {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  cycles    PrescriptionCycle[]
-  consents  PatientConsent[]
+  cycles           PrescriptionCycle[]
+  consents         PatientConsent[]
+  billingReminders BillingReminder[]
 
   @@map("patients")
 }
 
 model PrescriptionCycle {
-  id                      String   @id @default(cuid())
-  patient_id              String
+  id                       String   @id @default(cuid())
+  patient_id               String
   date_premiere_delivrance DateTime
-  nb_renouvellements      Int
-  intervalle_jours        Int      @default(21)
-  statut                  String   @default("ACTIF") // ACTIF, TERMINE, ANNULE
-  created_by              String
-  created_at              DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  nb_renouvellements       Int
+  intervalle_jours         Int      @default(21)
+  statut                   String   @default("ACTIF") // ACTIF, TERMINE, ANNULE
+  created_by               String
+  created_at               DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 
-  patient     Patient          @relation(fields: [patient_id], references: [id])
-  creator     User             @relation("CreatedBy", fields: [created_by], references: [id])
-  renewals    RenewalEvent[]
-  smsLogs     SmsLog[]
+  patient  Patient        @relation(fields: [patient_id], references: [id])
+  creator  User           @relation("CreatedBy", fields: [created_by], references: [id])
+  renewals RenewalEvent[]
+  smsLogs  SmsLog[]
 
   @@map("prescription_cycles")
 }
@@ -69,7 +71,7 @@ model PrescriptionCycle {
 model RenewalEvent {
   id                    String    @id @default(cuid())
   prescription_cycle_id String
-  index                 Int       // 0 pour R0, 1 pour R1, etc.
+  index                 Int // 0 pour R0, 1 pour R1, etc.
   date_theorique        DateTime
   statut                String    @default("A_PREPARER") // A_PREPARER, EN_PREPARATION, PRET, SMS_ENVOYE, TERMINE, ANNULE
   date_preparation      DateTime?
@@ -79,22 +81,22 @@ model RenewalEvent {
   updatedAt             DateTime  @updatedAt
 
   prescriptionCycle PrescriptionCycle @relation(fields: [prescription_cycle_id], references: [id])
-  smsLogs            SmsLog[]
+  smsLogs           SmsLog[]
 
   @@unique([prescription_cycle_id, index])
-  @@map("renewal_events")
   @@index([date_theorique])
   @@index([statut])
+  @@map("renewal_events")
 }
 
 model SmsTemplate {
-  id          String   @id @default(cuid())
-  code        String   @unique // RENOUVELLEMENT_PRET, etc.
-  libelle     String
-  message     String   // ≤ 160 caractères
-  actif       Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  code      String   @unique // RENOUVELLEMENT_PRET, etc.
+  libelle   String
+  message   String // ≤ 160 caractères
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   smsLogs SmsLog[]
 
@@ -108,45 +110,64 @@ model SmsLog {
   template_id           String?
   telephone             String
   message               String
-  statut                String   // SUCCESS, ERROR
-  api_id                String?  // ID retourné par TextingHouse
+  statut                String // SUCCESS, ERROR
+  api_id                String? // ID retourné par TextingHouse
   erreur                String?
   sent_by               String
   sent_at               DateTime @default(now())
 
   renewalEvent      RenewalEvent?      @relation(fields: [renewal_event_id], references: [id])
   prescriptionCycle PrescriptionCycle? @relation(fields: [prescription_cycle_id], references: [id])
-  template           SmsTemplate?       @relation(fields: [template_id], references: [id])
-  sender             User                @relation("SentBy", fields: [sent_by], references: [id])
+  template          SmsTemplate?       @relation(fields: [template_id], references: [id])
+  sender            User               @relation("SentBy", fields: [sent_by], references: [id])
 
-  @@map("sms_logs")
   @@index([sent_at])
   @@index([statut])
+  @@map("sms_logs")
 }
 
 model PatientConsent {
-  id              String    @id @default(cuid())
-  patient_id      String
-  consent_type    String    @default("ORDONNANCE_RETENTION")
-  created_at      DateTime  @default(now())
-  signed_at       DateTime?
-  place           String    @default("LA POSSESSION")
-  today_date      String
-  end_date        String?
-  document_url    String?   // URL du PDF stocké
-  signature_data  String?   // Base64 de la signature
-  revoked_at      DateTime?
-  revoked_reason  String?
-  created_by      String    // User qui a créé le consentement
-  revoked_by      String?   // User qui a révoqué
+  id             String    @id @default(cuid())
+  patient_id     String
+  consent_type   String    @default("ORDONNANCE_RETENTION")
+  created_at     DateTime  @default(now())
+  signed_at      DateTime?
+  place          String    @default("LA POSSESSION")
+  today_date     String
+  end_date       String?
+  document_url   String? // URL du PDF stocké
+  signature_data String? // Base64 de la signature
+  revoked_at     DateTime?
+  revoked_reason String?
+  created_by     String // User qui a créé le consentement
+  revoked_by     String? // User qui a révoqué
 
   patient Patient @relation(fields: [patient_id], references: [id])
   creator User    @relation("ConsentCreatedBy", fields: [created_by], references: [id])
   revoker User?   @relation("ConsentRevokedBy", fields: [revoked_by], references: [id])
 
-  @@map("patient_consents")
   @@index([patient_id])
   @@index([consent_type])
   @@index([revoked_at])
+  @@map("patient_consents")
 }
 
+model BillingReminder {
+  id          String    @id @default(cuid())
+  patient_id  String
+  date_rappel DateTime
+  notes       String?
+  statut      String    @default("A_FAIRE") // A_FAIRE, FAIT, ANNULE
+  date_fait   DateTime?
+  created_by  String
+  created_at  DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  patient Patient @relation(fields: [patient_id], references: [id])
+  creator User    @relation("BillingReminderCreatedBy", fields: [created_by], references: [id])
+
+  @@index([patient_id])
+  @@index([date_rappel])
+  @@index([statut])
+  @@map("billing_reminders")
+}
