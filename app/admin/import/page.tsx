@@ -160,17 +160,15 @@ function ImportPageContent() {
   };
 
   return (
-    <ProtectedRoute requiredRole={UserRole.ADMIN}>
-      <Layout>
-        <div>
-          <div className="mb-4 sm:mb-6">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-              Import depuis Google Calendar
-            </h1>
-            <p className="mt-2 text-xs sm:text-sm text-gray-600">
-              Importez vos renouvellements depuis un export .ics ou CSV de Google Agenda
-            </p>
-          </div>
+    <div>
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+          Import depuis Google Calendar
+        </h1>
+        <p className="mt-2 text-xs sm:text-sm text-gray-600">
+          Importez vos renouvellements depuis un export .ics ou CSV de Google Agenda
+        </p>
+      </div>
 
           <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
             <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Instructions</h2>
@@ -350,7 +348,7 @@ function ImportPageContent() {
             )}
           </div>
         </div>
-    </>
+    </div>
   );
 }
 
