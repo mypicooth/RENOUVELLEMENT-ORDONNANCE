@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
 import { UserRole } from "@/lib/types";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 interface ImportResult {
   message: string;
@@ -15,6 +17,8 @@ interface ImportResult {
       patient: string;
       status: string;
       error?: string;
+      firstRenewalDate?: string; // Date R0 au format YYYY-MM-DD
+      nbOccurrences?: number; // Nombre total d'occurrences (R0 + renouvellements)
     }>;
   };
 }
@@ -334,28 +338,42 @@ function ImportPageContent() {
           </button>
         </form>
 
-        {result && (
-          <div className="mt-6">
-            <div
-              className={`p-4 rounded-md mb-4 ${
-                result.results.errors === 0
-                  ? "bg-green-50 border border-green-200 text-green-800"
-                  : "bg-yellow-50 border border-yellow-200 text-yellow-800"
-              }`}
-            >
-              <p className="font-semibold">{result.message}</p>
-              <p className="text-sm mt-1">
-                {result.results.success} importés | {result.results.errors} erreurs
-              </p>
-            </div>
+            {result && (
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-4 no-print">
+                  <div
+                    className={`p-4 rounded-md ${
+                      result.results.errors === 0
+                        ? "bg-green-50 border border-green-200 text-green-800"
+                        : "bg-yellow-50 border border-yellow-200 text-yellow-800"
+                    }`}
+                  >
+                    <p className="font-semibold">{result.message}</p>
+                    <p className="text-sm mt-1">
+                      {result.results.success} importés | {result.results.errors} erreurs
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => window.print()}
+                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    🖨️ Imprimer
+                  </button>
+                </div>
+                <div className="print-only mb-4">
+                  <h2 className="text-lg font-bold text-gray-900">Résultats de l&apos;import</h2>
+                  <p className="text-sm text-gray-700">
+                    {result.message} - {new Date().toLocaleDateString("fr-FR")}
+                  </p>
+                </div>
 
-            {result.results.details.length > 0 && (
-              <div className="mt-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                  Détails de l&apos;import :
-                </h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
+                {result.results.details.length > 0 && (
+                  <div className="mt-4">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2 no-print">
+                      Détails de l&apos;import :
+                    </h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm print-table">
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-2 sm:px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
@@ -363,6 +381,12 @@ function ImportPageContent() {
                         </th>
                         <th className="px-2 sm:px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                           Statut
+                        </th>
+                        <th className="px-2 sm:px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden sm:table-cell">
+                          Date R0
+                        </th>
+                        <th className="px-2 sm:px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap hidden md:table-cell">
+                          Occurrences
                         </th>
                         <th className="px-2 sm:px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                           Erreur
@@ -389,6 +413,16 @@ function ImportPageContent() {
                                 {detail.status}
                               </span>
                             )}
+                          </td>
+                          <td className="px-2 sm:px-3 py-2 text-gray-600 text-xs hidden sm:table-cell">
+                            {detail.firstRenewalDate ? (
+                              format(new Date(detail.firstRenewalDate), "dd/MM/yyyy", { locale: fr })
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td className="px-2 sm:px-3 py-2 text-gray-600 text-xs hidden md:table-cell">
+                            {detail.nbOccurrences !== undefined ? detail.nbOccurrences : "-"}
                           </td>
                           <td className="px-2 sm:px-3 py-2 text-gray-600 text-xs">
                             {detail.error || "-"}

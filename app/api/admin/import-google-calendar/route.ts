@@ -337,6 +337,8 @@ export async function POST(request: NextRequest) {
             patient: `${nom} ${prenom}`,
             status: "Ignoré",
             error: "Cycle existant pour cette date",
+            firstRenewalDate: normalizedStartDate.toISOString().split("T")[0],
+            nbOccurrences: nbRenouvellements + 1,
           });
           continue;
         }
@@ -354,6 +356,8 @@ export async function POST(request: NextRequest) {
         results.details.push({
           patient: `${nom} ${prenom}`,
           status: "Importé",
+          firstRenewalDate: normalizedStartDate.toISOString().split("T")[0],
+          nbOccurrences: nbRenouvellements + 1,
         });
       } catch (error: any) {
         results.errors++;
