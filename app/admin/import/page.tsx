@@ -159,7 +159,7 @@ function ImportPageContent() {
     }
   };
 
-  return (
+  const content = (
     <div>
       <div className="mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
@@ -351,6 +351,8 @@ function ImportPageContent() {
       </div>
     </div>
   );
+
+  return content;
 }
 
 export default function ImportPage() {
