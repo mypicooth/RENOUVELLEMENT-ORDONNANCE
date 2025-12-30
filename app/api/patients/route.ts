@@ -14,8 +14,6 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const search = searchParams.get("search");
   const actif = searchParams.get("actif") !== "false";
-  const sortBy = searchParams.get("sortBy") || "date_recrutement";
-  const sortOrder = searchParams.get("sortOrder") || "desc";
 
   const where: any = { actif };
   if (search) {
@@ -27,22 +25,6 @@ export async function GET(request: NextRequest) {
     ];
   }
 
-  // Construire l'orderBy selon le paramètre de tri
-  let orderBy: any;
-  if (sortBy === "nom") {
-    orderBy = [
-      { nom: sortOrder },
-      { prenom: sortOrder },
-    ];
-  } else if (sortBy === "prenom") {
-    orderBy = [
-      { prenom: sortOrder },
-      { nom: sortOrder },
-    ];
-  } else {
-    orderBy = { [sortBy]: sortOrder };
-  }
-
   const patients = await prisma.patient.findMany({
     where,
     include: {
@@ -52,7 +34,7 @@ export async function GET(request: NextRequest) {
         },
       },
     },
-    orderBy,
+    orderBy: { date_recrutement: "desc" },
     take: 100,
   });
 
@@ -102,18 +84,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vérifier si le patient existe déjà avec le même nom, prénom ET téléphone
-    // Important : on ne fusionne que si les 3 correspondent (pour éviter de fusionner mère/fille)
-    const existingExact = await prisma.patient.findFirst({
+    // Vérifier si le patient existe déjà par téléphone
+    const existingByPhone = await prisma.patient.findFirst({
       where: {
-        nom: nom.trim(),
-        prenom: prenom.trim(),
         telephone_normalise: phoneNormalized,
         actif: true,
       },
     });
 
-    // Vérifier aussi par nom de famille (pour détecter les doublons potentiels - information seulement)
+    // Vérifier aussi par nom de famille (pour détecter les doublons)
     const existingByName = await prisma.patient.findMany({
       where: {
         nom: {
@@ -137,10 +116,10 @@ export async function POST(request: NextRequest) {
     });
 
     let patient;
-    if (existingExact) {
-      // Mettre à jour le patient existant uniquement si nom, prénom ET téléphone correspondent exactement
+    if (existingByPhone) {
+      // Mettre à jour le patient existant (même téléphone)
       patient = await prisma.patient.update({
-        where: { id: existingExact.id },
+        where: { id: existingByPhone.id },
         data: {
           nom,
           prenom,
@@ -149,7 +128,7 @@ export async function POST(request: NextRequest) {
         },
       });
     } else {
-      // Créer un nouveau patient (même si le téléphone ou le nom sont identiques mais pas le prénom)
+      // Créer un nouveau patient
       patient = await prisma.patient.create({
         data: {
           nom,
@@ -161,9 +140,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Retourner aussi les patients avec le même nom pour information (mais ne pas fusionner)
+    // Retourner aussi les patients avec le même nom pour information
     const response: any = { patient };
-    if (existingByName.length > 0 && !existingExact) {
+    if (existingByName.length > 0 && !existingByPhone) {
       response.duplicates = existingByName.map((p) => ({
         id: p.id,
         nom: p.nom,

@@ -1,0 +1,17 @@
+{
+  "name": "barcode-scanner-background",
+  "version": "1.0.0",
+  "description": "Application en arrière-plan pour scanner les QR codes de renouvellement",
+  "main": "scanner.js",
+  "scripts": {
+    "start": "node scanner.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "clipboardy": "^3.0.0"
+  },
+  "keywords": ["barcode", "scanner", "background"],
+  "author": "",
+  "license": "ISC"
+}
+

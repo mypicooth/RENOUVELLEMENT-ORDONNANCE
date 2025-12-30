@@ -235,36 +235,41 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Essayer d'extraire le téléphone depuis la description d'abord
-        const description = event.description || "";
-        const phoneMatch = description.match(/(\+33|0)[1-9]([.\s-]?\d{2}){4}/);
-        const telephone = phoneMatch ? phoneMatch[0].replace(/[.\s-]/g, "") : "";
-        const phoneNormalized = telephone ? normalizePhone(telephone) : null;
+        // Vérifier si le patient existe déjà (recherche insensible à la casse)
+        const allPatients = await prisma.patient.findMany({
+          where: { actif: true },
+        });
+        
+        let patient = allPatients.find(
+          (p) =>
+            p.nom.toLowerCase().includes(nom.toLowerCase()) &&
+            p.prenom.toLowerCase().includes(prenom.toLowerCase())
+        ) || null;
 
-        // Vérifier si le patient existe déjà avec correspondance exacte (nom + prénom + téléphone si disponible)
-        // Important : on ne fusionne que si les 3 correspondent exactement (pour éviter de fusionner mère/fille)
-        let patient = null;
-        
-        if (phoneNormalized) {
-          // Recherche exacte avec nom, prénom ET téléphone
-          patient = await prisma.patient.findFirst({
-            where: {
-              nom: nom.trim(),
-              prenom: prenom.trim(),
-              telephone_normalise: phoneNormalized,
-              actif: true,
-            },
-          });
-        }
-        
         // Si le patient n'existe pas, le créer
         if (!patient) {
-          if (!phoneNormalized) {
+          // Essayer d'extraire le téléphone depuis la description
+          const description = event.description || "";
+          const phoneMatch = description.match(/(\+33|0)[1-9]([.\s-]?\d{2}){4}/);
+          const telephone = phoneMatch ? phoneMatch[0].replace(/[.\s-]/g, "") : "";
+
+          if (!telephone) {
             results.errors++;
             results.details.push({
               patient: `${nom} ${prenom}`,
               status: "Erreur",
               error: "Téléphone manquant (nécessaire pour créer le patient)",
+            });
+            continue;
+          }
+
+          const phoneNormalized = normalizePhone(telephone);
+          if (!phoneNormalized) {
+            results.errors++;
+            results.details.push({
+              patient: `${nom} ${prenom}`,
+              status: "Erreur",
+              error: "Téléphone invalide",
             });
             continue;
           }

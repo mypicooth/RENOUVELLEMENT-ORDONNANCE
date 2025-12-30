@@ -30,8 +30,6 @@ export default function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<string>("date_recrutement");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedPatients, setSelectedPatients] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const isAdmin = session?.user.role === UserRole.ADMIN;
@@ -43,12 +41,6 @@ export default function PatientsPage() {
       if (search) {
         params.append("search", search);
       }
-      if (sortBy) {
-        params.append("sortBy", sortBy);
-      }
-      if (sortOrder) {
-        params.append("sortOrder", sortOrder);
-      }
       const res = await fetch(`/api/patients?${params.toString()}`);
       const data = await res.json();
       setPatients(data);
@@ -57,7 +49,7 @@ export default function PatientsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, sortBy, sortOrder]);
+  }, [search]);
 
   useEffect(() => {
     loadPatients();
@@ -344,7 +336,7 @@ export default function PatientsPage() {
             </button>
           </div>
 
-          <div className="mb-4 space-y-3">
+          <div className="mb-4">
             <input
               type="text"
               placeholder="Rechercher (nom, prénom, téléphone)..."
@@ -352,27 +344,6 @@ export default function PatientsPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
-            <div className="flex gap-3 items-center">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                Trier par:
-              </label>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="date_recrutement">Date de recrutement</option>
-                <option value="nom">Nom (ordre alphabétique)</option>
-                <option value="prenom">Prénom (ordre alphabétique)</option>
-              </select>
-              <button
-                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                title={sortOrder === "asc" ? "Tri croissant" : "Tri décroissant"}
-              >
-                {sortOrder === "asc" ? "↑" : "↓"}
-              </button>
-            </div>
           </div>
 
           {/* Barre d'actions en bloc */}
@@ -438,36 +409,10 @@ export default function PatientsPage() {
                       />
                     </th>
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                      <button
-                        onClick={() => {
-                          if (sortBy === "nom") {
-                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                          } else {
-                            setSortBy("nom");
-                            setSortOrder("asc");
-                          }
-                        }}
-                        className="flex items-center gap-1 hover:text-gray-700"
-                      >
-                        Nom
-                        {sortBy === "nom" && (sortOrder === "asc" ? " ↑" : " ↓")}
-                      </button>
+                      Nom
                     </th>
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                      <button
-                        onClick={() => {
-                          if (sortBy === "prenom") {
-                            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                          } else {
-                            setSortBy("prenom");
-                            setSortOrder("asc");
-                          }
-                        }}
-                        className="flex items-center gap-1 hover:text-gray-700"
-                      >
-                        Prénom
-                        {sortBy === "prenom" && (sortOrder === "asc" ? " ↑" : " ↓")}
-                      </button>
+                      Prénom
                     </th>
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">
                       Téléphone

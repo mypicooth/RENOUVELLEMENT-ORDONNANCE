@@ -77,6 +77,7 @@ model RenewalEvent {
   date_preparation      DateTime?
   date_sms              DateTime?
   date_termine          DateTime?
+  date_delivrance       DateTime? // Date de récupération du médicament (enregistrée lors du scan QR code)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
