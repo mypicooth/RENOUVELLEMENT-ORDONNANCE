@@ -4,7 +4,9 @@
   "description": "Application en arrière-plan pour scanner les QR codes de renouvellement",
   "main": "scanner.js",
   "scripts": {
-    "start": "node scanner.js"
+    "start": "node scanner.js",
+    "install-service": "node install-service.js",
+    "uninstall-service": "node uninstall-service.js"
   },
   "dependencies": {
     "axios": "^1.6.0",

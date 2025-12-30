@@ -85,52 +85,32 @@ L'application reste active dans le terminal. Appuyez sur `Ctrl+C` pour l'arrête
 
 Pour installer comme service Windows qui démarre automatiquement :
 
+**Option A : Via PowerShell (Recommandé - Plus simple)**
+
+1. Ouvrir PowerShell **en tant qu'administrateur** (clic droit > Exécuter en tant qu'administrateur)
+2. Naviguer vers le dossier `barcode-scanner`
+3. Exécuter :
+```powershell
+.\install-service.ps1
+```
+
+Le script vérifie automatiquement les prérequis et installe le service.
+
+**Option B : Via Node.js**
+
 1. Installer `node-windows` globalement :
 ```bash
 npm install -g node-windows
 ```
 
-2. Créer un fichier `install-service.js` dans `barcode-scanner` :
-
-```javascript
-const Service = require('node-windows').Service;
-const path = require('path');
-require('dotenv').config();
-
-const svc = new Service({
-  name: 'Renouvellement QR Scanner',
-  description: 'Scanner de QR codes en arrière-plan pour les renouvellements',
-  script: path.join(__dirname, 'scanner.js'),
-  env: [
-    {
-      name: "API_URL",
-      value: process.env.API_URL || "http://localhost:3000"
-    },
-    {
-      name: "SCANNER_API_TOKEN",
-      value: process.env.SCANNER_API_TOKEN || ""
-    }
-  ]
-});
-
-svc.on('install', function() {
-  console.log('Service installé avec succès !');
-  svc.start();
-});
-
-svc.on('start', function() {
-  console.log('Service démarré !');
-});
-
-svc.install();
-```
-
-3. Installer le service :
+2. Installer le service :
 ```bash
 node install-service.js
 ```
 
 Le service sera installé et démarrera automatiquement au démarrage de Windows.
+
+**Pour déployer sur plusieurs postes**, voir `DEPLOIEMENT_MULTI_POSTES.md`
 
 ## Configuration du Scanner de Code-barres
 
