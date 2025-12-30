@@ -101,6 +101,9 @@ export default function PatientDetailPage() {
     telephone_normalise: string;
   }>>([]);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [editingRenewal, setEditingRenewal] = useState<string | null>(null);
+  const [renewalNewDate, setRenewalNewDate] = useState("");
+  const [updatingRenewal, setUpdatingRenewal] = useState(false);
   const isAdmin = session?.user.role === UserRole.ADMIN;
 
   const loadPatient = useCallback(async () => {
@@ -366,6 +369,50 @@ export default function PatientDetailPage() {
       alert("Erreur lors de la création du cycle");
     } finally {
       setCreatingCycle(false);
+    }
+  };
+
+  const handleStartEditRenewal = (renewalId: string, currentDate: string) => {
+    setEditingRenewal(renewalId);
+    setRenewalNewDate(format(new Date(currentDate), "yyyy-MM-dd"));
+  };
+
+  const handleCancelEditRenewal = () => {
+    setEditingRenewal(null);
+    setRenewalNewDate("");
+  };
+
+  const handleUpdateRenewalDate = async (renewalId: string) => {
+    if (!renewalNewDate) {
+      alert("Veuillez sélectionner une date");
+      return;
+    }
+
+    setUpdatingRenewal(true);
+    try {
+      const res = await fetch("/api/renewals", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: renewalId,
+          date_theorique: renewalNewDate,
+        }),
+      });
+
+      if (res.ok) {
+        alert("Date du renouvellement modifiée avec succès");
+        setEditingRenewal(null);
+        setRenewalNewDate("");
+        loadPatient();
+      } else {
+        const error = await res.json();
+        alert(`Erreur: ${error.error || "Erreur lors de la modification"}`);
+      }
+    } catch (error) {
+      console.error("Erreur modification renouvellement:", error);
+      alert("Erreur lors de la modification du renouvellement");
+    } finally {
+      setUpdatingRenewal(false);
     }
   };
 
@@ -832,12 +879,54 @@ export default function PatientDetailPage() {
                               key={renewal.id}
                               className="text-xs border rounded p-3 bg-white print:break-inside-avoid"
                             >
-                              <div className="font-medium text-gray-900 mb-1">R{renewal.index}</div>
-                              <div className="text-gray-500 mb-2">
-                                {format(new Date(renewal.date_theorique), "dd/MM/yyyy", {
-                                  locale: fr,
-                                })}
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="font-medium text-gray-900">R{renewal.index}</div>
+                                {editingRenewal === renewal.id ? (
+                                  <div className="flex gap-1">
+                                    <button
+                                      onClick={() => handleUpdateRenewalDate(renewal.id)}
+                                      disabled={updatingRenewal}
+                                      className="px-2 py-0.5 text-[10px] bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 no-print"
+                                      title="Enregistrer"
+                                    >
+                                      ✓
+                                    </button>
+                                    <button
+                                      onClick={handleCancelEditRenewal}
+                                      disabled={updatingRenewal}
+                                      className="px-2 py-0.5 text-[10px] bg-gray-600 text-white rounded hover:bg-gray-700 disabled:opacity-50 no-print"
+                                      title="Annuler"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => handleStartEditRenewal(renewal.id, renewal.date_theorique)}
+                                    className="px-2 py-0.5 text-[10px] bg-blue-600 text-white rounded hover:bg-blue-700 no-print"
+                                    title="Modifier la date"
+                                  >
+                                    ✏️
+                                  </button>
+                                )}
                               </div>
+                              {editingRenewal === renewal.id ? (
+                                <div className="mb-2">
+                                  <input
+                                    type="date"
+                                    value={renewalNewDate}
+                                    onChange={(e) => setRenewalNewDate(e.target.value)}
+                                    className="w-full px-2 py-1 text-xs border border-gray-300 rounded text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                    disabled={updatingRenewal}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="text-gray-500 mb-2">
+                                  {format(new Date(renewal.date_theorique), "dd/MM/yyyy", {
+                                    locale: fr,
+                                  })}
+                                </div>
+                              )}
                               <div className="mb-2">
                                 <span
                                   className={`px-1 py-0.5 text-xs rounded ${

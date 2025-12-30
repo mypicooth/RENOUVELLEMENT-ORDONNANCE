@@ -63,6 +63,20 @@ export async function PATCH(
           { status: 400 }
         );
       }
+      
+      // Vérifier si ce téléphone existe déjà pour un AUTRE patient
+      // (on ne veut pas fusionner, juste avertir si nécessaire)
+      const existingByPhone = await prisma.patient.findFirst({
+        where: {
+          telephone_normalise: phoneNormalized,
+          actif: true,
+          id: { not: params.id }, // Exclure le patient actuel
+        },
+      });
+
+      // Si le téléphone existe déjà pour un autre patient, on met quand même à jour
+      // mais on pourrait retourner un avertissement si nécessaire
+      // Pour l'instant, on met simplement à jour sans fusionner
       updateData.telephone_normalise = phoneNormalized;
     }
 
