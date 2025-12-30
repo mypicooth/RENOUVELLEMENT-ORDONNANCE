@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import { addDays, getDay } from "date-fns";
+import { addDays, getDay, isPast, startOfDay } from "date-fns";
 
 /**
  * Ajuste une date pour qu'elle tombe sur un jour ouvrable (lundi-samedi)
@@ -46,6 +46,8 @@ export async function createPrescriptionCycle(params: {
   // index 2 = R2 (R1 + 21 jours, ajusté si dimanche)
   // etc.
   const events = [];
+  const today = startOfDay(new Date());
+  
   for (let i = 0; i <= nbRenouvellements; i++) {
     let dateTheorique = addDays(datePremiereDelivrance, i * intervalleJours);
     
@@ -54,11 +56,24 @@ export async function createPrescriptionCycle(params: {
       dateTheorique = adjustToWorkingDay(dateTheorique);
     }
     
+    // Déterminer le statut initial :
+    // - Si la date est dans le passé, R0 peut être TERMINE, sinon A_PREPARER
+    // - Pour les autres renouvellements, toujours A_PREPARER au départ
+    const dateTheoriqueStart = startOfDay(dateTheorique);
+    let initialStatut: string;
+    if (i === 0) {
+      // R0 : TERMINE seulement si la date est dans le passé
+      initialStatut = isPast(dateTheoriqueStart) ? "TERMINE" : "A_PREPARER";
+    } else {
+      // R1, R2, etc. : toujours A_PREPARER au départ
+      initialStatut = "A_PREPARER";
+    }
+    
     events.push({
       prescription_cycle_id: cycle.id,
       index: i,
       date_theorique: dateTheorique,
-      statut: i === 0 ? "TERMINE" : "A_PREPARER", // R0 est déjà terminé
+      statut: initialStatut,
     });
   }
 

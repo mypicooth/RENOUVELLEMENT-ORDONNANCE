@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const search = searchParams.get("search");
   const actif = searchParams.get("actif") !== "false";
+  const sortBy = searchParams.get("sortBy") || "date_recrutement";
+  const sortOrder = searchParams.get("sortOrder") || "desc";
 
   const where: any = { actif };
   if (search) {
@@ -25,6 +27,22 @@ export async function GET(request: NextRequest) {
     ];
   }
 
+  // Construire l'orderBy selon le paramètre de tri
+  let orderBy: any;
+  if (sortBy === "nom") {
+    orderBy = [
+      { nom: sortOrder },
+      { prenom: sortOrder },
+    ];
+  } else if (sortBy === "prenom") {
+    orderBy = [
+      { prenom: sortOrder },
+      { nom: sortOrder },
+    ];
+  } else {
+    orderBy = { [sortBy]: sortOrder };
+  }
+
   const patients = await prisma.patient.findMany({
     where,
     include: {
@@ -34,7 +52,7 @@ export async function GET(request: NextRequest) {
         },
       },
     },
-    orderBy: { date_recrutement: "desc" },
+    orderBy,
     take: 100,
   });
 
