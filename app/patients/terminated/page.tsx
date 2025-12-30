@@ -56,11 +56,6 @@ export default function TerminatedPatientsPage() {
     }
   }, []);
 
-  useEffect(() => {
-    loadPatients();
-    loadSmsTemplates();
-  }, [loadPatients]);
-
   const loadSmsTemplates = useCallback(async () => {
     try {
       const res = await fetch("/api/templates-sms");
@@ -72,6 +67,11 @@ export default function TerminatedPatientsPage() {
       console.error("Erreur chargement templates SMS:", error);
     }
   }, []);
+
+  useEffect(() => {
+    loadPatients();
+    loadSmsTemplates();
+  }, [loadPatients, loadSmsTemplates]);
 
   const toggleSelectPatient = (patientId: string) => {
     const newSelected = new Set(selectedPatients);

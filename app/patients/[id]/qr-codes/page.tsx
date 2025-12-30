@@ -262,8 +262,8 @@ export default function QRCodesPage() {
                 <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
                   <li>Imprimez cette page pour chaque cycle de renouvellement</li>
                   <li>Découpez chaque QR code et collez-le sur le sachet correspondant</li>
-                  <li>Le QR code "Renouvellement" recalcule automatiquement le prochain renouvellement (+21 jours)</li>
-                  <li>Le QR code "Fin ordonnance" termine le cycle (uniquement sur le dernier renouvellement)</li>
+                  <li>Le QR code &quot;Renouvellement&quot; recalcule automatiquement le prochain renouvellement (+21 jours)</li>
+                  <li>Le QR code &quot;Fin ordonnance&quot; termine le cycle (uniquement sur le dernier renouvellement)</li>
                 </ul>
               </div>
             </div>
