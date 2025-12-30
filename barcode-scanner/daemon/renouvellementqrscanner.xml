@@ -1,0 +1,33 @@
+<service>
+	<id>renouvellementqrscanner.exe</id>
+	<name>Renouvellement QR Scanner</name>
+	<description>Scanner de QR codes en arrière-plan pour les renouvellements d&apos;ordonnance</description>
+	<executable>C:\Program Files\nodejs\node.exe</executable>
+	<argument>--max_old_space_size=4096</argument>
+	<argument>C:\Users\abbas\Desktop\RENOUVELLEMENT-ORDONNANCE\barcode-scanner\node_modules\node-windows\lib\wrapper.js</argument>
+	<argument>--file</argument>
+	<argument>C:\Users\abbas\Desktop\RENOUVELLEMENT-ORDONNANCE\barcode-scanner\scanner.js</argument>
+	<argument>--scriptoptions=</argument>
+	<argument>--log</argument>
+	<argument>Renouvellement QR Scanner wrapper</argument>
+	<argument>--grow</argument>
+	<argument>0.25</argument>
+	<argument>--wait</argument>
+	<argument>1</argument>
+	<argument>--maxrestarts</argument>
+	<argument>3</argument>
+	<argument>--abortonerror</argument>
+	<argument>n</argument>
+	<argument>--stopparentfirst</argument>
+	<argument>undefined</argument>
+	<logmode>rotate</logmode>
+	<stoptimeout>30sec</stoptimeout>
+	<env name="API_URL" value="http://localhost:3000"/>
+	<env name="SCANNER_API_TOKEN" value="i9BT6kaxwNywFZ48HunEoME1J0BYmb5U"/>
+	<serviceaccount>
+		<domain>DESKTOP-BM7L67B</domain>
+		<user>LocalSystem</user>
+		<password></password>
+	</serviceaccount>
+	<workingdirectory>C:\Users\abbas\Desktop\RENOUVELLEMENT-ORDONNANCE\barcode-scanner</workingdirectory>
+</service>

@@ -1,0 +1,21 @@
+COMMANDE POWERSHELL POUR INSTALLER LE SERVICE
+==============================================
+
+1. Ouvrir PowerShell EN TANT QU'ADMINISTRATEUR :
+   - Clic droit sur PowerShell
+   - "Exécuter en tant qu'administrateur"
+
+2. Naviguer vers le dossier :
+   cd C:\Users\abbas\Desktop\RENOUVELLEMENT-ORDONNANCE\barcode-scanner
+
+3. Autoriser l'exécution du script (première fois seulement) :
+   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+4. Exécuter le script d'installation :
+   .\install-service.ps1
+
+OU EN UNE SEULE LIGNE :
+=======================
+
+cd C:\Users\abbas\Desktop\RENOUVELLEMENT-ORDONNANCE\barcode-scanner; Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force; .\install-service.ps1
+

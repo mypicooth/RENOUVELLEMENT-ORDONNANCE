@@ -12,8 +12,17 @@
     "axios": "^1.6.0",
     "clipboardy": "^3.0.0"
   },
-  "keywords": ["barcode", "scanner", "background"],
+  "devDependencies": {
+    "node-windows": "^1.0.0-beta.8"
+  },
+  "keywords": [
+    "barcode",
+    "scanner",
+    "background"
+  ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "node-windows": "^1.0.0-beta.8"
+  }
 }
-

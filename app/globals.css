@@ -205,6 +205,28 @@ body {
     margin-bottom: 8px !important;
   }
   
+  /* Styles pour l'impression des QR codes */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    
+    .print\\:break-inside-avoid {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    
+    .print\\:border-black {
+      border-color: black !important;
+    }
+    
+    /* Optimiser l'affichage des QR codes à l'impression */
+    svg[data-testid="qr-code-svg"] {
+      width: 100% !important;
+      height: auto !important;
+    }
+  }
+
   /* Simplifier les badges de statut pour l'impression */
   .rounded-full {
     padding: 1px 3px !important;

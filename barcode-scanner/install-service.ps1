@@ -18,15 +18,22 @@ if (-not $isAdmin) {
 
 # Vérifier que node-windows est installé
 Write-Host "Vérification de node-windows..." -ForegroundColor Yellow
-$nodeWindowsInstalled = npm list -g node-windows 2>$null
-if ($LASTEXITCODE -ne 0) {
+try {
+    $null = npm list -g node-windows 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "node-windows not found"
+    }
+    Write-Host "✅ node-windows est déjà installé" -ForegroundColor Green
+} catch {
     Write-Host "Installation de node-windows..." -ForegroundColor Yellow
     npm install -g node-windows
     if ($LASTEXITCODE -ne 0) {
         Write-Host "❌ Erreur lors de l'installation de node-windows" -ForegroundColor Red
+        Write-Host "   Essayez manuellement: npm install -g node-windows" -ForegroundColor Yellow
         pause
         exit 1
     }
+    Write-Host "✅ node-windows installé avec succès" -ForegroundColor Green
 }
 
 # Vérifier que le fichier .env existe
@@ -45,6 +52,19 @@ SCANNER_API_TOKEN=$apiToken
     
     Set-Content -Path $envPath -Value $envContent
     Write-Host "✅ Fichier .env créé" -ForegroundColor Green
+}
+
+# Installer node-windows localement si nécessaire
+Write-Host "Vérification de node-windows local..." -ForegroundColor Yellow
+if (-not (Test-Path (Join-Path $PSScriptRoot "node_modules\node-windows"))) {
+    Write-Host "Installation de node-windows localement..." -ForegroundColor Yellow
+    Set-Location $PSScriptRoot
+    npm install node-windows --save-dev
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ Erreur lors de l'installation locale de node-windows" -ForegroundColor Red
+        pause
+        exit 1
+    }
 }
 
 # Installer le service

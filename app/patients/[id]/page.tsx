@@ -8,6 +8,7 @@ import Layout from "@/components/Layout";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { UserRole } from "@/lib/types";
+import { QRCodeSVG } from "qrcode.react";
 
 interface Consent {
   id: string;
@@ -39,6 +40,7 @@ interface Patient {
     id: string;
     date_premiere_delivrance: string;
     nb_renouvellements: number;
+    intervalle_jours?: number;
     statut: string;
     renewals: Array<{
       id: string;
@@ -674,12 +676,21 @@ export default function PatientDetailPage() {
           <div className="bg-white shadow rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Cycles de prescription</h2>
-              <button
-                onClick={() => setShowNewCycle(!showNewCycle)}
-                className="px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
-              >
-                {showNewCycle ? "Annuler" : "➕ Nouvelle ordonnance"}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => router.push(`/patients/${params.id}/qr-codes`)}
+                  className="px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100"
+                  title="Voir et imprimer tous les QR codes"
+                >
+                  📱 QR Codes
+                </button>
+                <button
+                  onClick={() => setShowNewCycle(!showNewCycle)}
+                  className="px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
+                >
+                  {showNewCycle ? "Annuler" : "➕ Nouvelle ordonnance"}
+                </button>
+              </div>
             </div>
 
             {showNewCycle && (
@@ -791,30 +802,117 @@ export default function PatientDetailPage() {
                       </span>
                     </div>
                     <div className="mt-3">
-                      <p className="text-sm font-medium mb-2 text-gray-900">Renouvellements:</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {cycle.renewals.map((renewal) => (
-                          <div
-                            key={renewal.id}
-                            className="text-xs border rounded p-2 bg-white"
-                          >
-                            <div className="font-medium text-gray-900">R{renewal.index}</div>
-                            <div className="text-gray-500">
-                              {format(new Date(renewal.date_theorique), "dd/MM/yyyy", {
-                                locale: fr,
-                              })}
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-medium text-gray-900">Renouvellements:</p>
+                        <button
+                          onClick={() => window.print()}
+                          className="text-xs px-2 py-1 border border-gray-300 rounded text-gray-700 bg-white hover:bg-gray-50 no-print"
+                          title="Imprimer les QR codes"
+                        >
+                          🖨️ Imprimer QR codes
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {cycle.renewals.map((renewal) => {
+                          const isLastRenewal = renewal.index === cycle.nb_renouvellements;
+                          
+                          // Générer les données JSON pour les QR codes
+                          const qrCodeDataRenewal = JSON.stringify({
+                            renewalId: renewal.id,
+                            type: "RENEWAL",
+                          });
+                          
+                          const qrCodeDataEnd = JSON.stringify({
+                            renewalId: renewal.id,
+                            type: "RENEWAL_END",
+                          });
+
+                          return (
+                            <div
+                              key={renewal.id}
+                              className="text-xs border rounded p-3 bg-white print:break-inside-avoid"
+                            >
+                              <div className="font-medium text-gray-900 mb-1">R{renewal.index}</div>
+                              <div className="text-gray-500 mb-2">
+                                {format(new Date(renewal.date_theorique), "dd/MM/yyyy", {
+                                  locale: fr,
+                                })}
+                              </div>
+                              <div className="mb-2">
+                                <span
+                                  className={`px-1 py-0.5 text-xs rounded ${
+                                    STATUT_COLORS[renewal.statut] || "bg-gray-100 text-gray-800"
+                                  }`}
+                                >
+                                  {STATUT_LABELS[renewal.statut] || renewal.statut}
+                                </span>
+                              </div>
+                              
+                              {/* QR Codes */}
+                              <div className="mt-3 space-y-2">
+                                <div>
+                                  <div className="text-[9px] font-medium text-gray-700 mb-1">Renouvellement</div>
+                                  <div className="bg-white p-2 border-2 border-gray-300 rounded print:border-black">
+                                    <QRCodeSVG
+                                      value={qrCodeDataRenewal}
+                                      size={100}
+                                      level="M"
+                                      includeMargin={true}
+                                    />
+                                  </div>
+                                  
+                                  {/* Informations patient sous le QR code */}
+                                  <div className="mt-2 text-center space-y-0.5">
+                                    <div className="text-[8px] font-semibold text-gray-900">
+                                      {patient.nom.toUpperCase()} {patient.prenom}
+                                    </div>
+                                    <div className="text-[7px] text-gray-700">
+                                      📞 {patient.telephone_normalise}
+                                    </div>
+                                    <div className="text-[7px] text-gray-600">
+                                      Date: {format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr })}
+                                    </div>
+                                    {isLastRenewal && (
+                                      <div className="text-[7px] font-semibold text-red-700 mt-1">
+                                        ⚠️ DERNIÈRE ORDO
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {isLastRenewal && (
+                                  <div className="border-t pt-2 mt-2">
+                                    <div className="text-[9px] font-medium text-red-700 mb-1">⚠️ Fin ordonnance</div>
+                                    <div className="bg-white p-2 border-2 border-red-300 rounded print:border-black">
+                                      <QRCodeSVG
+                                        value={qrCodeDataEnd}
+                                        size={100}
+                                        level="M"
+                                        includeMargin={true}
+                                      />
+                                    </div>
+                                    
+                                    {/* Informations patient sous le QR code fin ordonnance */}
+                                    <div className="mt-2 text-center space-y-0.5">
+                                      <div className="text-[8px] font-semibold text-gray-900">
+                                        {patient.nom.toUpperCase()} {patient.prenom}
+                                      </div>
+                                      <div className="text-[7px] text-gray-700">
+                                        📞 {patient.telephone_normalise}
+                                      </div>
+                                      <div className="text-[7px] text-gray-600">
+                                        {format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr })}
+                                      </div>
+                                      <div className="text-[7px] font-semibold text-red-700 mt-1">
+                                        ⚠️ DERNIÈRE ORDO
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div className="mt-1">
-                              <span
-                                className={`px-1 py-0.5 text-xs rounded ${
-                                  STATUT_COLORS[renewal.statut] || "bg-gray-100 text-gray-800"
-                                }`}
-                              >
-                                {STATUT_LABELS[renewal.statut] || renewal.statut}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
