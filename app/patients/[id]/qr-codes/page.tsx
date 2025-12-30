@@ -20,6 +20,7 @@ interface Cycle {
   date_premiere_delivrance: string;
   nb_renouvellements: number;
   intervalle_jours: number;
+  statut: string;
   renewals: Renewal[];
 }
 
