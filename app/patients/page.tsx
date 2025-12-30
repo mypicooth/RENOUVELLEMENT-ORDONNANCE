@@ -340,14 +340,28 @@ export default function PatientsPage() {
             </button>
           </div>
 
-          <div className="mb-4">
-            <input
-              type="text"
-              placeholder="Rechercher (nom, prénom, téléphone)..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
+          <div className="mb-4 space-y-3">
+            <div className="flex gap-3">
+              <input
+                type="text"
+                placeholder="Rechercher (nom, prénom, téléphone)..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+              <select
+                value={filterActif === null ? "all" : filterActif ? "actif" : "termine"}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFilterActif(value === "all" ? null : value === "actif");
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="actif">Actifs</option>
+                <option value="termine">Terminés</option>
+                <option value="all">Tous</option>
+              </select>
+            </div>
           </div>
 
           {/* Barre d'actions en bloc */}
