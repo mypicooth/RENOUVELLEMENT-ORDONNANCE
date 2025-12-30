@@ -102,15 +102,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vérifier si le patient existe déjà par téléphone
-    const existingByPhone = await prisma.patient.findFirst({
+    // Vérifier si le patient existe déjà avec le même nom, prénom ET téléphone
+    // Important : on ne fusionne que si les 3 correspondent (pour éviter de fusionner mère/fille)
+    const existingExact = await prisma.patient.findFirst({
       where: {
+        nom: nom.trim(),
+        prenom: prenom.trim(),
         telephone_normalise: phoneNormalized,
         actif: true,
       },
     });
 
-    // Vérifier aussi par nom de famille (pour détecter les doublons)
+    // Vérifier aussi par nom de famille (pour détecter les doublons potentiels - information seulement)
     const existingByName = await prisma.patient.findMany({
       where: {
         nom: {
@@ -134,10 +137,10 @@ export async function POST(request: NextRequest) {
     });
 
     let patient;
-    if (existingByPhone) {
-      // Mettre à jour le patient existant (même téléphone)
+    if (existingExact) {
+      // Mettre à jour le patient existant uniquement si nom, prénom ET téléphone correspondent exactement
       patient = await prisma.patient.update({
-        where: { id: existingByPhone.id },
+        where: { id: existingExact.id },
         data: {
           nom,
           prenom,
@@ -146,7 +149,7 @@ export async function POST(request: NextRequest) {
         },
       });
     } else {
-      // Créer un nouveau patient
+      // Créer un nouveau patient (même si le téléphone ou le nom sont identiques mais pas le prénom)
       patient = await prisma.patient.create({
         data: {
           nom,
@@ -158,9 +161,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Retourner aussi les patients avec le même nom pour information
+    // Retourner aussi les patients avec le même nom pour information (mais ne pas fusionner)
     const response: any = { patient };
-    if (existingByName.length > 0 && !existingByPhone) {
+    if (existingByName.length > 0 && !existingExact) {
       response.duplicates = existingByName.map((p) => ({
         id: p.id,
         nom: p.nom,
