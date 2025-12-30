@@ -30,6 +30,7 @@ export default function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [filterActif, setFilterActif] = useState<boolean | null>(true); // true = actifs, false = terminés, null = tous
   const [selectedPatients, setSelectedPatients] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const isAdmin = session?.user.role === UserRole.ADMIN;
@@ -41,6 +42,9 @@ export default function PatientsPage() {
       if (search) {
         params.append("search", search);
       }
+      if (filterActif !== null) {
+        params.append("actif", filterActif.toString());
+      }
       const res = await fetch(`/api/patients?${params.toString()}`);
       const data = await res.json();
       setPatients(data);
@@ -49,7 +53,7 @@ export default function PatientsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, filterActif]);
 
   useEffect(() => {
     loadPatients();
