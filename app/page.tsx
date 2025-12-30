@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
+import { PDFDocument, rgb } from "pdf-lib";
 
 interface RenewalEvent {
   id: string;
@@ -63,7 +64,7 @@ export default function HomePage() {
   const [selectedAction, setSelectedAction] = useState<string>("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [showQRCodes, setShowQRCodes] = useState(false);
-  const [printingRenewalId, setPrintingRenewalId] = useState<string | null>(null);
+  const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
 
   const loadSmsTemplates = useCallback(async () => {
     try {
@@ -149,6 +150,239 @@ export default function HomePage() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const generateQRCodePDF = async (renewal: RenewalEvent) => {
+    try {
+      setGeneratingPDF(renewal.id);
+      
+      // Créer un nouveau document PDF
+      const pdfDoc = await PDFDocument.create();
+      
+      // Dimensions en points (1mm = 2.83465 points)
+      const widthMM = 55;
+      const heightMM = 25;
+      const widthPt = widthMM * 2.83465;
+      const heightPt = heightMM * 2.83465;
+      
+      // Créer une page avec les dimensions exactes
+      const page = pdfDoc.addPage([widthPt, heightPt]);
+      
+      // Générer le QR code
+      const qrCodeData = JSON.stringify({
+        renewalId: renewal.id,
+        type: "RENEWAL",
+      });
+      
+      // Utiliser qrcode pour générer le QR code en image
+      const QRCodeLib = await import("qrcode");
+      const qrCodeDataUrl = await QRCodeLib.default.toDataURL(qrCodeData, {
+        width: 200,
+        margin: 0,
+        color: {
+          dark: "#000000",
+          light: "#FFFFFF",
+        },
+      });
+      
+      // Convertir la data URL en image PNG
+      const imageBytes = await fetch(qrCodeDataUrl).then((res) => res.arrayBuffer());
+      const qrImage = await pdfDoc.embedPng(imageBytes);
+      
+      // Dimensions du QR code dans le PDF (environ 20mm de hauteur)
+      const qrSizeMM = 20;
+      const qrSizePt = qrSizeMM * 2.83465;
+      const marginMM = 2;
+      const marginPt = marginMM * 2.83465;
+      
+      // Dessiner le QR code
+      page.drawImage(qrImage, {
+        x: marginPt,
+        y: heightPt - marginPt - qrSizePt,
+        width: qrSizePt,
+        height: qrSizePt,
+      });
+      
+      // Ajouter le texte du patient
+      const fontSize = 8;
+      const textX = marginPt + qrSizePt + marginPt;
+      const textY = heightPt - marginPt;
+      
+      // Charger les polices
+      const helveticaBold = await pdfDoc.embedFont("Helvetica-Bold");
+      const helvetica = await pdfDoc.embedFont("Helvetica");
+      
+      // Nom en majuscules
+      page.drawText(renewal.prescriptionCycle.patient.nom.toUpperCase(), {
+        x: textX,
+        y: textY - fontSize,
+        size: fontSize,
+        color: rgb(0, 0, 0),
+        font: helveticaBold,
+      });
+      
+      // Prénom
+      page.drawText(renewal.prescriptionCycle.patient.prenom, {
+        x: textX,
+        y: textY - fontSize * 2.5,
+        size: fontSize * 0.9,
+        color: rgb(0, 0, 0),
+        font: helvetica,
+      });
+      
+      // Date
+      const dateText = format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr });
+      page.drawText(dateText, {
+        x: textX,
+        y: textY - fontSize * 4,
+        size: fontSize * 0.8,
+        color: rgb(0.4, 0.4, 0.4),
+        font: helvetica,
+      });
+      
+      // Numéro de renouvellement
+      page.drawText(`R${renewal.index}`, {
+        x: textX,
+        y: textY - fontSize * 5.5,
+        size: fontSize * 0.8,
+        color: rgb(0.3, 0.3, 0.3),
+        font: helvetica,
+      });
+      
+      // Sauvegarder le PDF
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `QR_${renewal.prescriptionCycle.patient.nom}_${renewal.prescriptionCycle.patient.prenom}_R${renewal.index}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      setGeneratingPDF(null);
+    } catch (error) {
+      console.error("Erreur génération PDF:", error);
+      alert("Erreur lors de la génération du PDF");
+      setGeneratingPDF(null);
+    }
+  };
+
+  const generateAllQRCodesPDF = async () => {
+    const renewalsToPrint = renewals.filter((r) => r.statut !== "ANNULE");
+    
+    if (renewalsToPrint.length === 0) {
+      alert("Aucun renouvellement à imprimer");
+      return;
+    }
+    
+    try {
+      setGeneratingPDF("all");
+      
+      // Créer un nouveau document PDF
+      const pdfDoc = await PDFDocument.create();
+      
+      // Dimensions en points (1mm = 2.83465 points)
+      const widthMM = 55;
+      const heightMM = 25;
+      const widthPt = widthMM * 2.83465;
+      const heightPt = heightMM * 2.83465;
+      
+      const QRCodeLib = await import("qrcode");
+      
+      // Charger les polices une seule fois
+      const helveticaBold = await pdfDoc.embedFont("Helvetica-Bold");
+      const helvetica = await pdfDoc.embedFont("Helvetica");
+      
+      // Générer un PDF pour chaque renouvellement
+      for (const renewal of renewalsToPrint) {
+        const page = pdfDoc.addPage([widthPt, heightPt]);
+        
+        const qrCodeData = JSON.stringify({
+          renewalId: renewal.id,
+          type: "RENEWAL",
+        });
+        
+        const qrCodeDataUrl = await QRCodeLib.default.toDataURL(qrCodeData, {
+          width: 200,
+          margin: 0,
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
+        });
+        
+        const imageBytes = await fetch(qrCodeDataUrl).then((res) => res.arrayBuffer());
+        const qrImage = await pdfDoc.embedPng(imageBytes);
+        
+        const qrSizeMM = 20;
+        const qrSizePt = qrSizeMM * 2.83465;
+        const marginMM = 2;
+        const marginPt = marginMM * 2.83465;
+        
+        page.drawImage(qrImage, {
+          x: marginPt,
+          y: heightPt - marginPt - qrSizePt,
+          width: qrSizePt,
+          height: qrSizePt,
+        });
+        
+        const fontSize = 8;
+        const textX = marginPt + qrSizePt + marginPt;
+        const textY = heightPt - marginPt;
+        
+        page.drawText(renewal.prescriptionCycle.patient.nom.toUpperCase(), {
+          x: textX,
+          y: textY - fontSize,
+          size: fontSize,
+          color: rgb(0, 0, 0),
+          font: helveticaBold,
+        });
+        
+        page.drawText(renewal.prescriptionCycle.patient.prenom, {
+          x: textX,
+          y: textY - fontSize * 2.5,
+          size: fontSize * 0.9,
+          color: rgb(0, 0, 0),
+          font: helvetica,
+        });
+        
+        const dateText = format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr });
+        page.drawText(dateText, {
+          x: textX,
+          y: textY - fontSize * 4,
+          size: fontSize * 0.8,
+          color: rgb(0.4, 0.4, 0.4),
+          font: helvetica,
+        });
+        
+        page.drawText(`R${renewal.index}`, {
+          x: textX,
+          y: textY - fontSize * 5.5,
+          size: fontSize * 0.8,
+          color: rgb(0.3, 0.3, 0.3),
+          font: helvetica,
+        });
+      }
+      
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `QR_codes_${format(new Date(), "yyyy-MM-dd", { locale: fr })}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      setGeneratingPDF(null);
+    } catch (error) {
+      console.error("Erreur génération PDF:", error);
+      alert("Erreur lors de la génération du PDF");
+      setGeneratingPDF(null);
+    }
   };
 
   const handleBulkAction = async () => {
@@ -564,12 +798,11 @@ export default function HomePage() {
               <div className="flex items-center justify-between mb-4 no-print">
                 <h2 className="text-lg font-semibold">Étiquettes QR codes du jour</h2>
                 <button
-                  onClick={() => {
-                    window.print();
-                  }}
-                  className="px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
+                  onClick={generateAllQRCodesPDF}
+                  disabled={generatingPDF === "all"}
+                  className="px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  🖨️ Imprimer toutes les étiquettes
+                  {generatingPDF === "all" ? "Génération..." : "📥 Télécharger toutes les étiquettes (PDF)"}
                 </button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 print:qr-labels-grid">
@@ -611,16 +844,11 @@ export default function HomePage() {
                           </div>
                         </div>
                         <button
-                          onClick={() => {
-                            setPrintingRenewalId(renewal.id);
-                            setTimeout(() => {
-                              window.print();
-                              setTimeout(() => setPrintingRenewalId(null), 100);
-                            }, 100);
-                          }}
-                          className="mt-1 w-full px-2 py-1 text-[8px] border border-blue-300 rounded text-blue-700 bg-blue-50 hover:bg-blue-100 no-print"
+                          onClick={() => generateQRCodePDF(renewal)}
+                          disabled={generatingPDF === renewal.id}
+                          className="mt-1 w-full px-2 py-1 text-[8px] border border-blue-300 rounded text-blue-700 bg-blue-50 hover:bg-blue-100 no-print disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Imprimer
+                          {generatingPDF === renewal.id ? "Génération..." : "📥 Télécharger PDF"}
                         </button>
                       </div>
                     );
@@ -634,51 +862,6 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Impression individuelle */}
-          {printingRenewalId && (
-            <div className="hidden print:block">
-              {renewals
-                .filter((r) => r.id === printingRenewalId)
-                .map((renewal) => {
-                  const qrCodeData = JSON.stringify({
-                    renewalId: renewal.id,
-                    type: "RENEWAL",
-                  });
-
-                  return (
-                    <div
-                      key={renewal.id}
-                      className="border-2 border-black rounded p-2 bg-white qr-label-print"
-                    >
-                      <div className="flex items-center gap-1 h-full">
-                        <div className="flex-shrink-0">
-                          <QRCodeSVG
-                            value={qrCodeData}
-                            size={60}
-                            level="M"
-                            includeMargin={false}
-                          />
-                        </div>
-                        <div className="flex-1 text-[8px] leading-tight overflow-hidden">
-                          <div className="font-semibold text-gray-900 truncate">
-                            {renewal.prescriptionCycle.patient.nom.toUpperCase()}
-                          </div>
-                          <div className="text-gray-700 truncate">
-                            {renewal.prescriptionCycle.patient.prenom}
-                          </div>
-                          <div className="text-[7px] text-gray-600 mt-0.5">
-                            {format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr })}
-                          </div>
-                          <div className="text-[7px] text-gray-500">
-                            R{renewal.index}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          )}
         </div>
       </Layout>
     </ProtectedRoute>
