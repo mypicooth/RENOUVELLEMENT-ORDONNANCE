@@ -7,6 +7,7 @@ import { RenewalEventStatus } from "@/lib/types";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useRouter } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 
 interface RenewalEvent {
   id: string;
@@ -61,6 +62,8 @@ export default function HomePage() {
   const [selectedRenewals, setSelectedRenewals] = useState<Set<string>>(new Set());
   const [selectedAction, setSelectedAction] = useState<string>("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [showQRCodes, setShowQRCodes] = useState(false);
+  const [printingRenewalId, setPrintingRenewalId] = useState<string | null>(null);
 
   const loadSmsTemplates = useCallback(async () => {
     try {
@@ -260,6 +263,12 @@ export default function HomePage() {
                 className="flex-1 sm:flex-none px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 no-print"
               >
                 🖨️ Imprimer
+              </button>
+              <button
+                onClick={() => setShowQRCodes(!showQRCodes)}
+                className="flex-1 sm:flex-none px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 no-print"
+              >
+                {showQRCodes ? "Masquer QR codes" : "📱 Imprimer QR codes"}
               </button>
               <button
                 onClick={() => router.push("/planning/semaine")}
@@ -546,6 +555,128 @@ export default function HomePage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Section d'impression des QR codes */}
+          {showQRCodes && (
+            <div className="mt-6 bg-white shadow rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4 no-print">
+                <h2 className="text-lg font-semibold">Étiquettes QR codes du jour</h2>
+                <button
+                  onClick={() => {
+                    window.print();
+                  }}
+                  className="px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
+                >
+                  🖨️ Imprimer toutes les étiquettes
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 print:qr-labels-grid">
+                {renewals
+                  .filter((r) => r.statut !== "ANNULE")
+                  .map((renewal) => {
+                    const qrCodeData = JSON.stringify({
+                      renewalId: renewal.id,
+                      type: "RENEWAL",
+                    });
+
+                    return (
+                      <div
+                        key={renewal.id}
+                        className="border-2 border-gray-300 rounded p-2 bg-white print:border-black print:qr-label-print"
+                      >
+                        <div className="flex items-center gap-1 h-full">
+                          <div className="flex-shrink-0">
+                            <QRCodeSVG
+                              value={qrCodeData}
+                              size={60}
+                              level="M"
+                              includeMargin={false}
+                            />
+                          </div>
+                          <div className="flex-1 text-[8px] leading-tight overflow-hidden">
+                            <div className="font-semibold text-gray-900 truncate">
+                              {renewal.prescriptionCycle.patient.nom.toUpperCase()}
+                            </div>
+                            <div className="text-gray-700 truncate">
+                              {renewal.prescriptionCycle.patient.prenom}
+                            </div>
+                            <div className="text-[7px] text-gray-600 mt-0.5">
+                              {format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr })}
+                            </div>
+                            <div className="text-[7px] text-gray-500">
+                              R{renewal.index}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setPrintingRenewalId(renewal.id);
+                            setTimeout(() => {
+                              window.print();
+                              setTimeout(() => setPrintingRenewalId(null), 100);
+                            }, 100);
+                          }}
+                          className="mt-1 w-full px-2 py-1 text-[8px] border border-blue-300 rounded text-blue-700 bg-blue-50 hover:bg-blue-100 no-print"
+                        >
+                          Imprimer
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+              {renewals.filter((r) => r.statut !== "ANNULE").length === 0 && (
+                <p className="text-center text-gray-500 py-8">
+                  Aucun renouvellement à imprimer aujourd&apos;hui
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Impression individuelle */}
+          {printingRenewalId && (
+            <div className="hidden print:block">
+              {renewals
+                .filter((r) => r.id === printingRenewalId)
+                .map((renewal) => {
+                  const qrCodeData = JSON.stringify({
+                    renewalId: renewal.id,
+                    type: "RENEWAL",
+                  });
+
+                  return (
+                    <div
+                      key={renewal.id}
+                      className="border-2 border-black rounded p-2 bg-white qr-label-print"
+                    >
+                      <div className="flex items-center gap-1 h-full">
+                        <div className="flex-shrink-0">
+                          <QRCodeSVG
+                            value={qrCodeData}
+                            size={60}
+                            level="M"
+                            includeMargin={false}
+                          />
+                        </div>
+                        <div className="flex-1 text-[8px] leading-tight overflow-hidden">
+                          <div className="font-semibold text-gray-900 truncate">
+                            {renewal.prescriptionCycle.patient.nom.toUpperCase()}
+                          </div>
+                          <div className="text-gray-700 truncate">
+                            {renewal.prescriptionCycle.patient.prenom}
+                          </div>
+                          <div className="text-[7px] text-gray-600 mt-0.5">
+                            {format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr })}
+                          </div>
+                          <div className="text-[7px] text-gray-500">
+                            R{renewal.index}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
           )}
         </div>

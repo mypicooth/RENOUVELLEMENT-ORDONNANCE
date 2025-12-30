@@ -31,6 +31,8 @@ export default function PatientsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterActif, setFilterActif] = useState<boolean | null>(true); // true = actifs, false = terminés, null = tous
+  const [sortBy, setSortBy] = useState<"nom" | "date_recrutement">("date_recrutement");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedPatients, setSelectedPatients] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const isAdmin = session?.user.role === UserRole.ADMIN;
@@ -47,13 +49,26 @@ export default function PatientsPage() {
       }
       const res = await fetch(`/api/patients?${params.toString()}`);
       const data = await res.json();
-      setPatients(data);
+      
+      // Trier les patients
+      const sorted = [...data].sort((a, b) => {
+        if (sortBy === "nom") {
+          const comparison = a.nom.localeCompare(b.nom, "fr");
+          return sortOrder === "asc" ? comparison : -comparison;
+        } else {
+          const dateA = new Date(a.date_recrutement).getTime();
+          const dateB = new Date(b.date_recrutement).getTime();
+          return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+        }
+      });
+      
+      setPatients(sorted);
     } catch (error) {
       console.error("Erreur chargement patients:", error);
     } finally {
       setLoading(false);
     }
-  }, [search, filterActif]);
+  }, [search, filterActif, sortBy, sortOrder]);
 
   useEffect(() => {
     loadPatients();
@@ -426,8 +441,15 @@ export default function PatientsPage() {
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     </th>
-                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                      Nom
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-gray-100" onClick={() => {
+                      if (sortBy === "nom") {
+                        setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                      } else {
+                        setSortBy("nom");
+                        setSortOrder("asc");
+                      }
+                    }}>
+                      Nom {sortBy === "nom" && (sortOrder === "asc" ? "↑" : "↓")}
                     </th>
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Prénom
@@ -435,8 +457,15 @@ export default function PatientsPage() {
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">
                       Téléphone
                     </th>
-                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
-                      Date recrutement
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell cursor-pointer hover:bg-gray-100" onClick={() => {
+                      if (sortBy === "date_recrutement") {
+                        setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                      } else {
+                        setSortBy("date_recrutement");
+                        setSortOrder("desc");
+                      }
+                    }}>
+                      Date recrutement {sortBy === "date_recrutement" && (sortOrder === "asc" ? "↑" : "↓")}
                     </th>
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Consentement

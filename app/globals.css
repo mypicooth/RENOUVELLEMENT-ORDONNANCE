@@ -299,6 +299,38 @@ body {
   .print-table .md\:hidden {
     display: table-cell !important;
   }
+
+  /* Styles pour l'impression des étiquettes QR codes (55mm x 25mm) */
+  .qr-label-print {
+    width: 55mm !important;
+    height: 25mm !important;
+    min-width: 55mm !important;
+    min-height: 25mm !important;
+    max-width: 55mm !important;
+    max-height: 25mm !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin: 0 !important;
+    padding: 2mm !important;
+    box-sizing: border-box;
+  }
+
+  /* Grille d'étiquettes pour l'impression */
+  .qr-labels-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 55mm) !important;
+    gap: 2mm !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Ajuster la taille du QR code dans les étiquettes */
+  .qr-label-print svg {
+    width: 60px !important;
+    height: 60px !important;
+    flex-shrink: 0 !important;
+  }
 }
 
 /* Masquer les éléments print-only par défaut */
