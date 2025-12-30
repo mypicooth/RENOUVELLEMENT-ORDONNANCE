@@ -251,7 +251,9 @@ export default function HomePage() {
       
       // Sauvegarder le PDF
       const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength)], { type: "application/pdf" });
+      // Créer un nouveau Uint8Array pour garantir la compatibilité
+      const bytes = new Uint8Array(pdfBytes);
+      const blob = new Blob([bytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
