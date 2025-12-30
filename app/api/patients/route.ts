@@ -13,9 +13,15 @@ export async function GET(request: NextRequest) {
 
   const searchParams = request.nextUrl.searchParams;
   const search = searchParams.get("search");
-  const actif = searchParams.get("actif") !== "false";
-
-  const where: any = { actif };
+  const actifParam = searchParams.get("actif");
+  
+  // Si actif n'est pas fourni, on ne filtre pas (tous les patients)
+  // Si actif="true", on filtre actifs uniquement
+  // Si actif="false", on filtre terminés uniquement
+  const where: any = {};
+  if (actifParam !== null) {
+    where.actif = actifParam === "true";
+  }
   if (search) {
     // SQLite ne supporte pas mode: "insensitive", on utilise contains
     where.OR = [
