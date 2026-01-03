@@ -7,6 +7,7 @@ import Layout from "@/components/Layout";
 import { RenewalEventStatus } from "@/lib/types";
 import { format, startOfWeek, addDays, eachDayOfInterval, isSameDay } from "date-fns";
 import { fr } from "date-fns/locale";
+import { PDFDocument, rgb } from "pdf-lib";
 
 interface RenewalEvent {
   id: string;
@@ -14,7 +15,9 @@ interface RenewalEvent {
   date_theorique: string;
   statut: RenewalEventStatus;
   date_sms?: string | null;
+  date_delivrance?: string | null;
   prescriptionCycle: {
+    nb_renouvellements: number;
     patient: {
       id: string;
       nom: string;
@@ -60,6 +63,7 @@ export default function PlanningSemainePage() {
   const [smsTemplates, setSmsTemplates] = useState<SmsTemplate[]>([]);
   const [selectedTemplates, setSelectedTemplates] = useState<Record<string, string>>({});
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
 
   const loadSmsTemplates = useCallback(async () => {
     try {
@@ -176,6 +180,166 @@ export default function PlanningSemainePage() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const generateQRCodesPDF = async () => {
+    if (!selectedDate) {
+      alert("Veuillez sélectionner une date");
+      return;
+    }
+
+    const dateStr = format(selectedDate, "yyyy-MM-dd");
+    const renewalsToPrint = renewalsByDay[dateStr]?.filter((r) => r.statut !== "ANNULE") || [];
+    
+    if (renewalsToPrint.length === 0) {
+      alert("Aucun renouvellement à imprimer pour cette date");
+      return;
+    }
+    
+    try {
+      setGeneratingPDF("all");
+      
+      // Créer un nouveau document PDF
+      const pdfDoc = await PDFDocument.create();
+      
+      // Dimensions en points (1mm = 2.83465 points)
+      const widthMM = 55;
+      const heightMM = 25;
+      const widthPt = widthMM * 2.83465;
+      const heightPt = heightMM * 2.83465;
+      
+      const QRCodeLib = await import("qrcode");
+      
+      // Charger les polices une seule fois
+      const helveticaBold = await pdfDoc.embedFont("Helvetica-Bold");
+      
+      // Générer un PDF pour chaque renouvellement
+      for (const renewal of renewalsToPrint) {
+        const page = pdfDoc.addPage([widthPt, heightPt]);
+        
+        // Vérifier si c'est le dernier renouvellement
+        const isLastRenewal = renewal.index === renewal.prescriptionCycle.nb_renouvellements;
+        
+        const qrCodeData = JSON.stringify({
+          renewalId: renewal.id,
+          type: isLastRenewal ? "RENEWAL_END" : "RENEWAL",
+        });
+        
+        const qrCodeDataUrl = await QRCodeLib.default.toDataURL(qrCodeData, {
+          width: 200,
+          margin: 0,
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
+        });
+        
+        const imageBytes = await fetch(qrCodeDataUrl).then((res) => res.arrayBuffer());
+        const qrImage = await pdfDoc.embedPng(imageBytes);
+        
+        const qrSizeMM = 20;
+        const qrSizePt = qrSizeMM * 2.83465;
+        const marginMM = 2;
+        const marginPt = marginMM * 2.83465;
+        
+        page.drawImage(qrImage, {
+          x: marginPt,
+          y: heightPt - marginPt - qrSizePt,
+          width: qrSizePt,
+          height: qrSizePt,
+        });
+        
+        const baseFontSize = 16;
+        const textX = marginPt + qrSizePt + marginPt;
+        const textY = heightPt - marginPt;
+        
+        // Nom en majuscules
+        const nomSize = baseFontSize;
+        page.drawText(renewal.prescriptionCycle.patient.nom.toUpperCase(), {
+          x: textX,
+          y: textY - nomSize * 0.8,
+          size: nomSize,
+          color: rgb(0, 0, 0),
+          font: helveticaBold,
+        });
+        
+        // Prénom
+        const prenomSize = baseFontSize;
+        page.drawText(renewal.prescriptionCycle.patient.prenom, {
+          x: textX,
+          y: textY - nomSize * 1.8,
+          size: prenomSize,
+          color: rgb(0, 0, 0),
+          font: helveticaBold,
+        });
+        
+        // Date théorique
+        const dateText = format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr });
+        const dateSize = baseFontSize * 0.85;
+        page.drawText(dateText, {
+          x: textX,
+          y: textY - nomSize * 2.5,
+          size: dateSize,
+          color: rgb(0.4, 0.4, 0.4),
+          font: helveticaBold,
+        });
+        
+        // Date de délivrance (si disponible)
+        let yOffset = nomSize * 3.3;
+        if (renewal.date_delivrance) {
+          const dateDelivranceText = `✓ Délivré: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
+          const delivranceSize = baseFontSize * 0.85;
+          page.drawText(dateDelivranceText, {
+            x: textX,
+            y: textY - yOffset,
+            size: delivranceSize,
+            color: rgb(0, 0.4, 0.8),
+            font: helveticaBold,
+          });
+          yOffset = nomSize * 4.1;
+        }
+        
+        // Numéro de renouvellement
+        const renouvellementSize = baseFontSize * 0.85;
+        page.drawText(`R${renewal.index}`, {
+          x: textX,
+          y: textY - yOffset,
+          size: renouvellementSize,
+          color: rgb(0.3, 0.3, 0.3),
+          font: helveticaBold,
+        });
+        
+        // Note pour le dernier renouvellement
+        if (isLastRenewal) {
+          yOffset = yOffset + nomSize * 0.9;
+          page.drawText("⚠️ DERNIÈRE ORDO", {
+            x: textX,
+            y: textY - yOffset,
+            size: baseFontSize * 0.7,
+            color: rgb(0.83, 0.18, 0.18),
+            font: helveticaBold,
+          });
+        }
+      }
+      
+      const pdfBytes = await pdfDoc.save();
+      const bytes = new Uint8Array(pdfBytes);
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `QR_codes_${dateStr}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      setGeneratingPDF(null);
+    } catch (error) {
+      console.error("Erreur génération PDF:", error);
+      alert("Erreur lors de la génération du PDF");
+      setGeneratingPDF(null);
+    }
   };
 
   const handleBulkSendSms = async () => {
@@ -396,11 +560,21 @@ export default function PlanningSemainePage() {
                 <h2 className="text-lg font-semibold">
                   {format(selectedDate, "EEEE d MMMM yyyy", { locale: fr })}
                 </h2>
-                {selectedDate > new Date() && (
-                  <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded" title="Vous pouvez préparer et envoyer les SMS en avance pour cette date">
-                    ⏩ Date future
-                  </span>
-                )}
+                <div className="flex gap-2 items-center">
+                  {selectedDate > new Date() && (
+                    <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded" title="Vous pouvez préparer et envoyer les SMS en avance pour cette date">
+                      ⏩ Date future
+                    </span>
+                  )}
+                  <button
+                    onClick={generateQRCodesPDF}
+                    disabled={generatingPDF === "all" || !renewalsByDay[format(selectedDate, "yyyy-MM-dd")]?.filter((r) => r.statut !== "ANNULE").length}
+                    className="px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Imprimer les QR codes de cette date"
+                  >
+                    {generatingPDF === "all" ? "Génération..." : "📱 Imprimer QR codes"}
+                  </button>
+                </div>
               </div>
               {/* En-tête pour l'impression du tableau de détails */}
               <div className="hidden print:block print:mb-4 print:border-b print:border-gray-300 print:pb-4">
