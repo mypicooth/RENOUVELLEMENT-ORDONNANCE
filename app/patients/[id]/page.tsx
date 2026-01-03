@@ -105,18 +105,7 @@ export default function PatientDetailPage() {
   const [editingRenewal, setEditingRenewal] = useState<string | null>(null);
   const [renewalNewDate, setRenewalNewDate] = useState("");
   const [updatingRenewal, setUpdatingRenewal] = useState(false);
-  const [selectedDateForQR, setSelectedDateForQR] = useState<string>(format(new Date(), "yyyy-MM-dd"));
-  const [generatingPDF, setGeneratingPDF] = useState(false);
-  const [dateRenewals, setDateRenewals] = useState<Array<{
-    id: string;
-    index: number;
-    date_theorique: string;
-    statut: string;
-    date_delivrance?: string | null;
-    prescriptionCycle: {
-      nb_renouvellements: number;
-    };
-  }>>([]);
+  const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
   const isAdmin = session?.user.role === UserRole.ADMIN;
 
   const loadPatient = useCallback(async () => {
@@ -157,39 +146,14 @@ export default function PatientDetailPage() {
   useEffect(() => {
     if (patient) {
       loadConsents();
-      loadRenewalsByDate(selectedDateForQR);
     }
   }, [patient, loadConsents]);
 
-  const loadRenewalsByDate = async (date: string) => {
-    if (!params.id) return;
-    try {
-      const res = await fetch(`/api/renewals?date=${date}`);
-      if (res.ok) {
-        const data = await res.json();
-        // Filtrer pour ne garder que les renouvellements de ce patient
-        const patientRenewals = data.filter((r: any) => 
-          r.prescriptionCycle?.patient?.id === params.id
-        );
-        setDateRenewals(patientRenewals);
-      }
-    } catch (error) {
-      console.error("Erreur chargement renouvellements par date:", error);
-    }
-  };
-
-  const generateQRCodesPDFForDate = async () => {
-    const renewalsToPrint = dateRenewals.filter((r) => r.statut !== "ANNULE");
-    
-    if (renewalsToPrint.length === 0) {
-      alert("Aucun renouvellement à imprimer pour cette date");
-      return;
-    }
-    
+  const generateQRCodePDFForRenewal = async (renewal: { id: string; index: number; date_theorique: string; date_delivrance?: string | null }, type: "RENEWAL" | "RENEWAL_END") => {
     if (!patient) return;
     
     try {
-      setGeneratingPDF(true);
+      setGeneratingPDF(renewal.id);
       
       const pdfDoc = await PDFDocument.create();
       const widthMM = 55;
@@ -200,96 +164,93 @@ export default function PatientDetailPage() {
       const QRCodeLib = await import("qrcode");
       const helveticaBold = await pdfDoc.embedFont("Helvetica-Bold");
       
-      for (const renewal of renewalsToPrint) {
-        const page = pdfDoc.addPage([widthPt, heightPt]);
-        const isLastRenewal = renewal.index === renewal.prescriptionCycle.nb_renouvellements;
-        
-        const qrCodeData = JSON.stringify({
-          renewalId: renewal.id,
-          type: isLastRenewal ? "RENEWAL_END" : "RENEWAL",
-        });
-        
-        const qrCodeDataUrl = await QRCodeLib.default.toDataURL(qrCodeData, {
-          width: 200,
-          margin: 0,
-          color: { dark: "#000000", light: "#FFFFFF" },
-        });
-        
-        const imageBytes = await fetch(qrCodeDataUrl).then((res) => res.arrayBuffer());
-        const qrImage = await pdfDoc.embedPng(imageBytes);
-        
-        const qrSizeMM = 20;
-        const qrSizePt = qrSizeMM * 2.83465;
-        const marginMM = 2;
-        const marginPt = marginMM * 2.83465;
-        
-        page.drawImage(qrImage, {
-          x: marginPt,
-          y: heightPt - marginPt - qrSizePt,
-          width: qrSizePt,
-          height: qrSizePt,
-        });
-        
-        const baseFontSize = 16;
-        const textX = marginPt + qrSizePt + marginPt;
-        const textY = heightPt - marginPt;
-        
-        page.drawText(patient.nom.toUpperCase(), {
-          x: textX,
-          y: textY - baseFontSize * 0.8,
-          size: baseFontSize,
-          color: rgb(0, 0, 0),
-          font: helveticaBold,
-        });
-        
-        page.drawText(patient.prenom, {
-          x: textX,
-          y: textY - baseFontSize * 1.8,
-          size: baseFontSize,
-          color: rgb(0, 0, 0),
-          font: helveticaBold,
-        });
-        
-        const dateText = format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr });
-        page.drawText(dateText, {
-          x: textX,
-          y: textY - baseFontSize * 2.5,
-          size: baseFontSize * 0.85,
-          color: rgb(0.4, 0.4, 0.4),
-          font: helveticaBold,
-        });
-        
-        let yOffset = baseFontSize * 3.3;
-        if (renewal.date_delivrance) {
-          const dateDelivranceText = `✓ Délivré: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
-          page.drawText(dateDelivranceText, {
-            x: textX,
-            y: textY - yOffset,
-            size: baseFontSize * 0.85,
-            color: rgb(0, 0.4, 0.8),
-            font: helveticaBold,
-          });
-          yOffset = baseFontSize * 4.1;
-        }
-        
-        page.drawText(`R${renewal.index}`, {
+      const page = pdfDoc.addPage([widthPt, heightPt]);
+      
+      const qrCodeData = JSON.stringify({
+        renewalId: renewal.id,
+        type: type,
+      });
+      
+      const qrCodeDataUrl = await QRCodeLib.default.toDataURL(qrCodeData, {
+        width: 200,
+        margin: 0,
+        color: { dark: "#000000", light: "#FFFFFF" },
+      });
+      
+      const imageBytes = await fetch(qrCodeDataUrl).then((res) => res.arrayBuffer());
+      const qrImage = await pdfDoc.embedPng(imageBytes);
+      
+      const qrSizeMM = 20;
+      const qrSizePt = qrSizeMM * 2.83465;
+      const marginMM = 2;
+      const marginPt = marginMM * 2.83465;
+      
+      page.drawImage(qrImage, {
+        x: marginPt,
+        y: heightPt - marginPt - qrSizePt,
+        width: qrSizePt,
+        height: qrSizePt,
+      });
+      
+      const baseFontSize = 16;
+      const textX = marginPt + qrSizePt + marginPt;
+      const textY = heightPt - marginPt;
+      
+      page.drawText(patient.nom.toUpperCase(), {
+        x: textX,
+        y: textY - baseFontSize * 0.8,
+        size: baseFontSize,
+        color: rgb(0, 0, 0),
+        font: helveticaBold,
+      });
+      
+      page.drawText(patient.prenom, {
+        x: textX,
+        y: textY - baseFontSize * 1.8,
+        size: baseFontSize,
+        color: rgb(0, 0, 0),
+        font: helveticaBold,
+      });
+      
+      const dateText = format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr });
+      page.drawText(dateText, {
+        x: textX,
+        y: textY - baseFontSize * 2.5,
+        size: baseFontSize * 0.85,
+        color: rgb(0.4, 0.4, 0.4),
+        font: helveticaBold,
+      });
+      
+      let yOffset = baseFontSize * 3.3;
+      if (renewal.date_delivrance) {
+        const dateDelivranceText = `✓ Délivré: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
+        page.drawText(dateDelivranceText, {
           x: textX,
           y: textY - yOffset,
           size: baseFontSize * 0.85,
-          color: rgb(0.3, 0.3, 0.3),
+          color: rgb(0, 0.4, 0.8),
           font: helveticaBold,
         });
-        
-        if (isLastRenewal) {
-          yOffset = yOffset + baseFontSize * 0.9;
-          page.drawText("⚠️ DERNIÈRE ORDO", {
-            x: textX,
-            y: textY - yOffset,
-            size: baseFontSize * 0.7,
-            color: rgb(0.83, 0.18, 0.18),
-            font: helveticaBold,
-          });
-        }
+        yOffset = baseFontSize * 4.1;
+      }
+      
+      page.drawText(`R${renewal.index}`, {
+        x: textX,
+        y: textY - yOffset,
+        size: baseFontSize * 0.85,
+        color: rgb(0.3, 0.3, 0.3),
+        font: helveticaBold,
+      });
+      
+      if (type === "RENEWAL_END") {
+        yOffset = yOffset + baseFontSize * 0.9;
+        page.drawText("⚠️ DERNIÈRE ORDO", {
+          x: textX,
+          y: textY - yOffset,
+          size: baseFontSize * 0.7,
+          color: rgb(0.83, 0.18, 0.18),
+          font: helveticaBold,
+        });
       }
       
       const pdfBytes = await pdfDoc.save();
@@ -298,17 +259,17 @@ export default function PatientDetailPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `QR_codes_${patient.nom}_${selectedDateForQR}.pdf`;
+      link.download = `QR_${patient.nom}_${patient.prenom}_R${renewal.index}_${type === "RENEWAL_END" ? "FIN" : ""}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      setGeneratingPDF(false);
+      setGeneratingPDF(null);
     } catch (error) {
       console.error("Erreur génération PDF:", error);
       alert("Erreur lors de la génération du PDF");
-      setGeneratingPDF(false);
+      setGeneratingPDF(null);
     }
   };
 
@@ -1014,27 +975,8 @@ export default function PatientDetailPage() {
                       </span>
                     </div>
                     <div className="mt-3">
-                      <div className="flex items-center justify-between mb-2 no-print">
+                      <div className="mb-2">
                         <p className="text-sm font-medium text-gray-900">Renouvellements:</p>
-                        <div className="flex gap-2 items-center">
-                          <input
-                            type="date"
-                            value={selectedDateForQR}
-                            onChange={(e) => {
-                              setSelectedDateForQR(e.target.value);
-                              loadRenewalsByDate(e.target.value);
-                            }}
-                            className="px-2 py-1 text-xs border border-gray-300 rounded"
-                          />
-                          <button
-                            onClick={generateQRCodesPDFForDate}
-                            disabled={generatingPDF || dateRenewals.length === 0}
-                            className="px-3 py-1 text-xs border border-blue-300 rounded text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Imprimer les QR codes de cette date"
-                          >
-                            {generatingPDF ? "..." : "📱 Imprimer QR codes"}
-                          </button>
-                        </div>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                         {cycle.renewals.map((renewal) => {
@@ -1117,7 +1059,17 @@ export default function PatientDetailPage() {
                               {/* QR Codes */}
                               <div className="mt-3 space-y-2">
                                 <div>
-                                  <div className="text-[9px] font-medium text-gray-700 mb-1">Renouvellement</div>
+                                  <div className="flex items-center justify-between mb-1 no-print">
+                                    <div className="text-[9px] font-medium text-gray-700">Renouvellement</div>
+                                    <button
+                                      onClick={() => generateQRCodePDFForRenewal(renewal, isLastRenewal ? "RENEWAL_END" : "RENEWAL")}
+                                      disabled={generatingPDF === renewal.id}
+                                      className="px-2 py-0.5 text-[8px] border border-green-300 rounded text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title="Imprimer le QR code"
+                                    >
+                                      {generatingPDF === renewal.id ? "..." : "📱 Imprimer"}
+                                    </button>
+                                  </div>
                                   <div className="bg-white p-2 border-2 border-gray-300 rounded print:border-black">
                                     <QRCodeSVG
                                       value={qrCodeDataRenewal}
@@ -1148,7 +1100,17 @@ export default function PatientDetailPage() {
                                 
                                 {isLastRenewal && (
                                   <div className="border-t pt-2 mt-2">
-                                    <div className="text-[9px] font-medium text-red-700 mb-1">⚠️ Fin ordonnance</div>
+                                    <div className="flex items-center justify-between mb-1 no-print">
+                                      <div className="text-[9px] font-medium text-red-700">⚠️ Fin ordonnance</div>
+                                      <button
+                                        onClick={() => generateQRCodePDFForRenewal(renewal, "RENEWAL_END")}
+                                        disabled={generatingPDF === renewal.id}
+                                        className="px-2 py-0.5 text-[8px] border border-red-300 rounded text-red-700 bg-red-50 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title="Imprimer le QR code fin ordonnance"
+                                      >
+                                        {generatingPDF === renewal.id ? "..." : "📱 Imprimer"}
+                                      </button>
+                                    </div>
                                     <div className="bg-white p-2 border-2 border-red-300 rounded print:border-black">
                                       <QRCodeSVG
                                         value={qrCodeDataEnd}
