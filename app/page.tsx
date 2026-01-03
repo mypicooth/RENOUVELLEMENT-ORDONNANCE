@@ -242,7 +242,7 @@ export default function HomePage() {
               }
               .prenom {
                 font-weight: bold;
-                font-size: 14px;
+                font-size: 16px;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -250,21 +250,23 @@ export default function HomePage() {
                 margin-bottom: 1mm;
               }
               .date {
-                font-size: 10px;
+                font-size: 16px;
                 color: #666;
+                font-weight: bold;
                 margin-top: 0.5mm;
                 margin-bottom: 0.5mm;
               }
               .date-delivrance {
-                font-size: 9px;
+                font-size: 16px;
                 color: #0066cc;
                 font-weight: bold;
                 margin-top: 0.5mm;
                 margin-bottom: 0.5mm;
               }
               .renouvellement {
-                font-size: 10px;
+                font-size: 16px;
                 color: #999;
+                font-weight: bold;
                 margin-top: 0.5mm;
               }
               @media print {
@@ -377,7 +379,7 @@ export default function HomePage() {
       });
       
       // Prénom (agrandi et en gras)
-      const prenomSize = baseFontSize * 0.85;
+      const prenomSize = baseFontSize;
       page.drawText(renewal.prescriptionCycle.patient.prenom, {
         x: textX,
         y: textY - nomSize * 1.8,
@@ -386,22 +388,22 @@ export default function HomePage() {
         font: helveticaBold,
       });
       
-      // Date théorique
+      // Date théorique (même taille que nom/prénom)
       const dateText = format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr });
-      const dateSize = baseFontSize * 0.7;
+      const dateSize = baseFontSize;
       page.drawText(dateText, {
         x: textX,
         y: textY - nomSize * 2.8,
         size: dateSize,
         color: rgb(0.4, 0.4, 0.4),
-        font: helvetica,
+        font: helveticaBold,
       });
       
-      // Date de délivrance (si disponible)
+      // Date de délivrance (si disponible) - même taille
       let yOffset = nomSize * 3.8;
       if (renewal.date_delivrance) {
         const dateDelivranceText = `✓ Délivré: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
-        const delivranceSize = baseFontSize * 0.65;
+        const delivranceSize = baseFontSize;
         page.drawText(dateDelivranceText, {
           x: textX,
           y: textY - yOffset,
@@ -412,14 +414,14 @@ export default function HomePage() {
         yOffset = nomSize * 4.8;
       }
       
-      // Numéro de renouvellement
-      const renouvellementSize = baseFontSize * 0.7;
+      // Numéro de renouvellement (même taille que nom/prénom)
+      const renouvellementSize = baseFontSize;
       page.drawText(`R${renewal.index}`, {
         x: textX,
         y: textY - yOffset,
         size: renouvellementSize,
         color: rgb(0.3, 0.3, 0.3),
-        font: helvetica,
+        font: helveticaBold,
       });
       
       // Sauvegarder le PDF
@@ -518,7 +520,7 @@ export default function HomePage() {
         });
         
         // Prénom (agrandi et en gras)
-        const prenomSize = baseFontSize * 0.85;
+        const prenomSize = baseFontSize;
         page.drawText(renewal.prescriptionCycle.patient.prenom, {
           x: textX,
           y: textY - nomSize * 1.8,
@@ -527,22 +529,22 @@ export default function HomePage() {
           font: helveticaBold,
         });
         
-        // Date théorique
+        // Date théorique (même taille que nom/prénom)
         const dateText = format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr });
-        const dateSize = baseFontSize * 0.7;
+        const dateSize = baseFontSize;
         page.drawText(dateText, {
           x: textX,
           y: textY - nomSize * 2.8,
           size: dateSize,
           color: rgb(0.4, 0.4, 0.4),
-          font: helvetica,
+          font: helveticaBold,
         });
         
-        // Date de délivrance (si disponible)
+        // Date de délivrance (si disponible) - même taille
         let yOffset = nomSize * 3.8;
         if (renewal.date_delivrance) {
           const dateDelivranceText = `✓ Délivré: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
-          const delivranceSize = baseFontSize * 0.65;
+          const delivranceSize = baseFontSize;
           page.drawText(dateDelivranceText, {
             x: textX,
             y: textY - yOffset,
@@ -553,14 +555,14 @@ export default function HomePage() {
           yOffset = nomSize * 4.8;
         }
         
-        // Numéro de renouvellement
-        const renouvellementSize = baseFontSize * 0.7;
+        // Numéro de renouvellement (même taille que nom/prénom)
+        const renouvellementSize = baseFontSize;
         page.drawText(`R${renewal.index}`, {
           x: textX,
           y: textY - yOffset,
           size: renouvellementSize,
           color: rgb(0.3, 0.3, 0.3),
-          font: helvetica,
+          font: helveticaBold,
         });
       }
       
