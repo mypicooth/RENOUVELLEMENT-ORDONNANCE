@@ -2,8 +2,8 @@
   "name": "barcode-scanner-background",
   "version": "1.0.0",
   "description": "Application en arrière-plan pour scanner les QR codes de renouvellement",
-  "main": "scanner.js",
-  "bin": "scanner.js",
+  "main": "scanner-wrapper.js",
+  "bin": "scanner-wrapper.js",
   "scripts": {
     "start": "node scanner.js",
     "build": "node build.js",
@@ -12,8 +12,8 @@
     "uninstall-service": "node uninstall-service.js"
   },
   "dependencies": {
-    "axios": "^1.6.0",
-    "clipboardy": "^3.0.0"
+    "axios": "^0.27.2",
+    "clipboardy": "^2.3.0"
   },
   "devDependencies": {
     "node-windows": "^1.0.0-beta.8",
@@ -24,8 +24,11 @@
       "config.json"
     ],
     "scripts": [
+      "scanner-wrapper.js",
       "scanner.js",
-      "scanner-config.js"
+      "scanner-config.js",
+      "scanner-logger.js",
+      "scanner-startup.js"
     ]
   },
   "keywords": [

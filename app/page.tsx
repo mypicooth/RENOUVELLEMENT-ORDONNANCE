@@ -67,6 +67,8 @@ export default function HomePage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [showQRCodes, setShowQRCodes] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [showOldRenewals, setShowOldRenewals] = useState(false);
 
   const loadSmsTemplates = useCallback(async () => {
     try {
@@ -91,6 +93,21 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error("Erreur chargement planning:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadRenewalsByDate = useCallback(async (date: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/renewals?date=${date}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRenewals(data);
+      }
+    } catch (error) {
+      console.error("Erreur chargement renouvellements:", error);
     } finally {
       setLoading(false);
     }
@@ -1058,23 +1075,75 @@ export default function HomePage() {
           {/* Section d'impression des QR codes */}
           {showQRCodes && (
             <div className="mt-6 bg-white shadow rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4 no-print">
-                <h2 className="text-lg font-semibold">Étiquettes QR codes du jour</h2>
-                <button
-                  onClick={generateAllQRCodesPDF}
-                  disabled={generatingPDF === "all"}
-                  className="px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {generatingPDF === "all" ? "Génération..." : "📥 Télécharger toutes les étiquettes (PDF)"}
-                </button>
+              <div className="flex items-center justify-between mb-4 no-print flex-wrap gap-2">
+                <h2 className="text-lg font-semibold">
+                  {showOldRenewals ? (
+                    (() => {
+                      const selected = new Date(selectedDate);
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      selected.setHours(0, 0, 0, 0);
+                      const isFuture = selected > today;
+                      const isPast = selected < today;
+                      const isToday = selected.getTime() === today.getTime();
+                      
+                      if (isFuture) {
+                        return `Étiquettes QR codes du ${format(new Date(selectedDate), "dd/MM/yyyy", { locale: fr })} (à l'avance)`;
+                      } else if (isPast) {
+                        return `Étiquettes QR codes du ${format(new Date(selectedDate), "dd/MM/yyyy", { locale: fr })} (anciennes)`;
+                      } else {
+                        return `Étiquettes QR codes du ${format(new Date(selectedDate), "dd/MM/yyyy", { locale: fr })}`;
+                      }
+                    })()
+                  ) : (
+                    "Étiquettes QR codes du jour"
+                  )}
+                </h2>
+                <div className="flex gap-2 items-center flex-wrap">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={showOldRenewals}
+                      onChange={(e) => {
+                        setShowOldRenewals(e.target.checked);
+                        if (e.target.checked) {
+                          loadRenewalsByDate(selectedDate);
+                        } else {
+                          loadTodayRenewals();
+                        }
+                      }}
+                      className="rounded"
+                    />
+                    <span className="text-sm">Sélectionner une date</span>
+                  </label>
+                  {showOldRenewals && (
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => {
+                        setSelectedDate(e.target.value);
+                        loadRenewalsByDate(e.target.value);
+                      }}
+                      className="px-3 py-1 border rounded text-sm"
+                    />
+                  )}
+                  <button
+                    onClick={generateAllQRCodesPDF}
+                    disabled={generatingPDF === "all"}
+                    className="px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingPDF === "all" ? "Génération..." : "📥 Télécharger toutes les étiquettes (PDF)"}
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 print:qr-labels-grid">
                 {renewals
                   .filter((r) => r.statut !== "ANNULE")
                   .map((renewal) => {
+                    const isLastRenewal = renewal.index === renewal.prescriptionCycle.nb_renouvellements;
                     const qrCodeData = JSON.stringify({
                       renewalId: renewal.id,
-                      type: "RENEWAL",
+                      type: isLastRenewal ? "RENEWAL_END" : "RENEWAL",
                     });
 
                     return (

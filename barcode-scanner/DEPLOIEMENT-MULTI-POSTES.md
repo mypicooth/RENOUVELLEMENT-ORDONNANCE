@@ -121,17 +121,39 @@ Si vous devez modifier la configuration :
    - Le scanner devrait automatiquement envoyer le scan à l'API
    - Vérifier dans l'application web que la date de délivrance a été enregistrée
 
+## Dépannage
+
+Si le service ne démarre pas ou ne répond pas :
+
+1. **Vérifier le statut** :
+   - Double-cliquez sur `check-service.bat`
+   - Ou exécutez : `sc query RenouvellementQRScanner`
+
+2. **Redémarrer le service** :
+   - Double-cliquez sur `restart-service.bat` (en tant qu'administrateur)
+   - Ou exécutez : `net stop RenouvellementQRScanner && net start RenouvellementQRScanner`
+
+3. **Vérifier les logs** :
+   - Ouvrir l'Observateur d'événements Windows
+   - Applications et services journaux > RenouvellementQRScanner
+
+4. **Vérifier la configuration** :
+   - Vérifier que `config.json` est valide
+   - Vérifier que l'URL de l'API est accessible
+
+Pour plus de détails, consultez `DEPANNAGE.md`.
+
 ## Désinstallation
 
 Sur chaque poste :
 
 1. **Arrêter le service** :
-   ```powershell
+   ```cmd
    net stop RenouvellementQRScanner
    ```
 
 2. **Supprimer le service** :
-   ```powershell
+   ```cmd
    sc delete RenouvellementQRScanner
    ```
 

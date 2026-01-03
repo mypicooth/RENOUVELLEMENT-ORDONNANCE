@@ -8,14 +8,101 @@
  * - Envoie automatiquement le scan à l'API
  */
 
-const axios = require('axios');
-const clipboardy = require('clipboardy');
-const os = require('os');
-const { loadConfig } = require('./scanner-config');
+// Charger le système de logging de démarrage en premier
+let startupLogger;
+try {
+  startupLogger = require('./scanner-startup');
+  startupLogger.writeStartupLog('Chargement du module principal...');
+} catch (error) {
+  // Si on ne peut pas charger le startup logger, essayer d'écrire directement
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+    const logFile = path.join(os.tmpdir(), 'renouvellement-scanner-startup-error.log');
+    fs.appendFileSync(logFile, `${new Date().toISOString()} - Erreur chargement startup logger: ${error.message}\n`, 'utf8');
+  } catch (e) {
+    // Ignorer
+  }
+}
 
-// Charger la configuration
-const CONFIG = loadConfig();
-const API_TOKEN = CONFIG.SCANNER_API_TOKEN || '';
+// Charger le logger en premier pour capturer toutes les erreurs
+let logger;
+try {
+  logger = require('./scanner-logger');
+} catch (error) {
+  // Logger de secours si le module ne peut pas être chargé
+  logger = {
+    info: (msg) => { try { console.log(msg); } catch(e) {} },
+    error: (msg) => { try { console.error(msg); } catch(e) {} },
+    warn: (msg) => { try { console.warn(msg); } catch(e) {} },
+    debug: (msg) => { try { console.log(msg); } catch(e) {} },
+  };
+  // Écrire dans un fichier de secours
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const logFile = path.join(process.cwd(), 'scanner-error.log');
+    const writeError = (msg) => {
+      try {
+        fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`, 'utf8');
+      } catch(e) {}
+    };
+    writeError(`Erreur chargement logger: ${error.message}`);
+  } catch(e) {}
+}
+
+// Charger les autres modules avec gestion d'erreurs
+let axios, clipboardy, os, loadConfig;
+try {
+  if (startupLogger) startupLogger.writeStartupLog('Chargement des modules...');
+  axios = require('axios');
+  if (startupLogger) startupLogger.writeStartupLog('  ✓ axios chargé');
+  clipboardy = require('clipboardy');
+  if (startupLogger) startupLogger.writeStartupLog('  ✓ clipboardy chargé');
+  os = require('os');
+  if (startupLogger) startupLogger.writeStartupLog('  ✓ os chargé');
+  const scannerConfig = require('./scanner-config');
+  loadConfig = scannerConfig.loadConfig;
+  if (startupLogger) startupLogger.writeStartupLog('  ✓ scanner-config chargé');
+  logger.info('Modules chargés avec succès');
+  if (startupLogger) startupLogger.writeStartupLog('Tous les modules chargés avec succès');
+} catch (error) {
+  const errorMsg = `Erreur chargement modules: ${error.message}`;
+  const stackMsg = `Stack: ${error.stack}`;
+  if (startupLogger) {
+    startupLogger.writeStartupLog(`ERREUR: ${errorMsg}`);
+    startupLogger.writeStartupLog(stackMsg);
+  }
+  logger.error(errorMsg);
+  logger.error(stackMsg);
+  // Attendre 5 secondes pour que l'utilisateur voie l'erreur
+  setTimeout(() => {
+    process.exit(1);
+  }, 5000);
+  throw error;
+}
+
+// Charger la configuration avec gestion d'erreurs
+let CONFIG, API_TOKEN;
+try {
+  logger.info('Chargement de la configuration...');
+  CONFIG = loadConfig();
+  API_TOKEN = CONFIG.SCANNER_API_TOKEN || '';
+  logger.info('Configuration chargée avec succès');
+} catch (error) {
+  logger.error(`Erreur chargement configuration: ${error.message}`);
+  logger.error(`Stack: ${error.stack}`);
+  // Utiliser des valeurs par défaut
+  CONFIG = {
+    API_URL: process.env.API_URL || 'http://localhost:3000',
+    SCANNER_API_TOKEN: '',
+    SCAN_INTERVAL: 100,
+    MIN_LENGTH: 20,
+  };
+  API_TOKEN = '';
+  logger.warn('Utilisation des valeurs par défaut');
+}
 
 let lastClipboardContent = '';
 let isProcessing = false;
@@ -46,7 +133,7 @@ async function sendScanToAPI(renewalId, type) {
   try {
     scanCount++;
     const timestamp = new Date().toLocaleTimeString();
-    console.log(`[${timestamp}] Scan #${scanCount} détecté: ${type} pour ${renewalId.substring(0, 20)}...`);
+    logger.info(`Scan #${scanCount} détecté: ${type} pour ${renewalId.substring(0, 20)}...`);
     
     // Utiliser l'endpoint public avec token API si disponible
     const endpoint = API_TOKEN 
@@ -65,22 +152,22 @@ async function sendScanToAPI(renewalId, type) {
     });
 
     if (response.data.success) {
-      console.log(`✅ ${response.data.message}`);
+      logger.info(`✅ ${response.data.message}`);
       return { success: true, message: response.data.message };
     } else {
-      console.error(`❌ Erreur: ${response.data.error || 'Erreur inconnue'}`);
+      logger.error(`❌ Erreur: ${response.data.error || 'Erreur inconnue'}`);
       return { success: false, error: response.data.error };
     }
   } catch (error) {
     if (error.response) {
       const errorMsg = error.response.data?.error || error.message;
-      console.error(`❌ Erreur API (${error.response.status}): ${errorMsg}`);
+      logger.error(`❌ Erreur API (${error.response.status}): ${errorMsg}`);
       return { success: false, error: errorMsg };
     } else if (error.request) {
-      console.error(`❌ Pas de réponse du serveur. Vérifiez que l'application web est démarrée sur ${CONFIG.API_URL}`);
+      logger.error(`❌ Pas de réponse du serveur. Vérifiez que l'application web est démarrée sur ${CONFIG.API_URL}`);
       return { success: false, error: 'Serveur inaccessible' };
     } else {
-      console.error(`❌ Erreur: ${error.message}`);
+      logger.error(`❌ Erreur: ${error.message}`);
       return { success: false, error: error.message };
     }
   }
@@ -93,7 +180,23 @@ async function checkClipboard() {
   if (isProcessing) return;
 
   try {
-    const currentContent = clipboardy.readSync();
+    // Essayer de lire le clipboard avec un timeout
+    let currentContent;
+    try {
+      currentContent = clipboardy.readSync();
+    } catch (clipboardError) {
+      // Si le clipboard n'est pas accessible (normal en mode service au démarrage)
+      // Attendre un peu et réessayer
+      if (clipboardError.message && (
+        clipboardError.message.includes('clipboard') || 
+        clipboardError.message.includes('EBUSY') ||
+        clipboardError.message.includes('access')
+      )) {
+        // Erreur normale, ignorer
+        return;
+      }
+      throw clipboardError;
+    }
     
     // Détecter un changement significatif (nouveau scan)
     if (currentContent !== lastClipboardContent && 
@@ -118,9 +221,15 @@ async function checkClipboard() {
     }
   } catch (error) {
     // Ignorer les erreurs de lecture du clipboard (fichier verrouillé, etc.)
-    if (!error.message.includes('clipboard') && !error.message.includes('EBUSY')) {
-      console.error('Erreur lecture clipboard:', error.message);
+    if (error.message && (
+      error.message.includes('clipboard') || 
+      error.message.includes('EBUSY') ||
+      error.message.includes('access')
+    )) {
+      // Erreur normale, ignorer silencieusement
+      return;
     }
+    logger.error(`Erreur lecture clipboard: ${error.message}`);
   }
 }
 
@@ -128,41 +237,70 @@ async function checkClipboard() {
  * Fonction principale
  */
 function start() {
-  console.log('='.repeat(70));
-  console.log('  Scanner de QR codes en arrière-plan');
-  console.log('='.repeat(70));
-  console.log(`  API URL: ${CONFIG.API_URL}`);
-  console.log(`  Intervalle de vérification: ${CONFIG.SCAN_INTERVAL}ms`);
-  if (API_TOKEN) {
-    console.log(`  Token API: ${API_TOKEN.substring(0, 10)}... (configuré)`);
-    console.log(`  Mode: Authentifié (scan-public)`);
-  } else {
-    console.log('  ⚠️  Token API non configuré');
-    console.log(`  Mode: Session web requise (scan)`);
-    console.log(`  💡 Configurez le token dans config.json`);
+  try {
+    logger.info('='.repeat(70));
+    logger.info('  Scanner de QR codes en arrière-plan');
+    logger.info('='.repeat(70));
+    logger.info(`  API URL: ${CONFIG.API_URL}`);
+    logger.info(`  Intervalle de vérification: ${CONFIG.SCAN_INTERVAL}ms`);
+    if (API_TOKEN) {
+      logger.info(`  Token API: ${API_TOKEN.substring(0, 10)}... (configuré)`);
+      logger.info(`  Mode: Authentifié (scan-public)`);
+    } else {
+      logger.warn('  Token API non configuré');
+      logger.info(`  Mode: Session web requise (scan)`);
+      logger.info(`  💡 Configurez le token dans config.json`);
+    }
+    logger.info('');
+    logger.info('  En écoute... (Appuyez sur Ctrl+C pour arrêter)');
+    logger.info('='.repeat(70));
+    logger.info('');
+  } catch (error) {
+    logger.error(`Erreur lors de l'initialisation: ${error.message}`);
+    throw error;
   }
-  console.log('');
-  console.log('  En écoute... (Appuyez sur Ctrl+C pour arrêter)');
-  console.log('='.repeat(70));
-  console.log('');
 
   // Vérifier le clipboard périodiquement
-  const interval = setInterval(checkClipboard, CONFIG.SCAN_INTERVAL);
+  const interval = setInterval(() => {
+    try {
+      checkClipboard();
+    } catch (error) {
+      console.error('Erreur dans checkClipboard:', error.message);
+      // Continuer à fonctionner même en cas d'erreur
+    }
+  }, CONFIG.SCAN_INTERVAL);
 
   // Vérifier immédiatement
-  checkClipboard();
+  try {
+    checkClipboard();
+  } catch (error) {
+    console.error('Erreur lors de la vérification initiale:', error.message);
+  }
+
+  // Gestion des erreurs non capturées pour éviter que le service ne plante
+  process.on('uncaughtException', (error) => {
+    logger.error(`Erreur non capturée: ${error.message}`);
+    logger.error(`Stack: ${error.stack}`);
+    // Ne pas quitter, continuer à fonctionner
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.error(`Promesse rejetée non gérée: ${reason}`);
+    // Ne pas quitter, continuer à fonctionner
+  });
 
   // Gestion de l'arrêt propre
   process.on('SIGINT', () => {
-    console.log('\n');
-    console.log('='.repeat(70));
-    console.log(`  Arrêt du scanner (${scanCount} scan(s) traité(s))`);
-    console.log('='.repeat(70));
+    logger.info('\n');
+    logger.info('='.repeat(70));
+    logger.info(`  Arrêt du scanner (${scanCount} scan(s) traité(s))`);
+    logger.info('='.repeat(70));
     clearInterval(interval);
     process.exit(0);
   });
 
   process.on('SIGTERM', () => {
+    logger.info(`Arrêt du scanner (${scanCount} scan(s) traité(s))`);
     clearInterval(interval);
     process.exit(0);
   });
@@ -170,12 +308,38 @@ function start() {
 
 // Vérifier que nous sommes sur Windows
 if (os.platform() !== 'win32') {
-  console.error('⚠️  Cette application est conçue pour Windows uniquement.');
-  console.error('   Le scanner de clipboard fonctionne mieux sur Windows.');
+  logger.error('⚠️  Cette application est conçue pour Windows uniquement.');
+  logger.error('   Le scanner de clipboard fonctionne mieux sur Windows.');
   process.exit(1);
 }
 
-// Démarrer
-start();
+// Gestion des erreurs de démarrage pour le service Windows
+try {
+  if (startupLogger) startupLogger.writeStartupLog('Appel de la fonction start()...');
+  logger.info('Démarrage de l\'application...');
+  // Démarrer
+  start();
+  logger.info('Application démarrée avec succès');
+  if (startupLogger) startupLogger.writeStartupLog('Application démarrée avec succès');
+} catch (error) {
+  const errorMsg = `❌ Erreur fatale au démarrage: ${error.message}`;
+  const stackMsg = `Stack: ${error.stack}`;
+  if (startupLogger) {
+    startupLogger.writeStartupLog(`ERREUR FATALE: ${errorMsg}`);
+    startupLogger.writeStartupLog(stackMsg);
+  }
+  logger.error(errorMsg);
+  logger.error(stackMsg);
+  
+  // Si on est en mode console (pas service), attendre pour voir l'erreur
+  const isService = !process.stdin || process.stdin.isTTY === false;
+  const waitTime = isService ? 2000 : 10000; // Attendre plus longtemps en mode console
+  
+  // Attendre avant de quitter pour que les logs soient écrits
+  setTimeout(() => {
+    if (startupLogger) startupLogger.writeStartupLog('Arrêt de l\'application suite à une erreur');
+    process.exit(1);
+  }, waitTime);
+}
 
 

@@ -33,6 +33,13 @@ console.log('[2/5] Copie des fichiers de configuration...');
 const filesToCopy = [
   { src: 'config.json', dest: 'config.json' },
   { src: 'install-service-standalone.ps1', dest: 'install-service.ps1' },
+  { src: 'install-service.bat', dest: 'install-service.bat' },
+  { src: 'install.bat', dest: 'install.bat' },
+  { src: 'check-service.bat', dest: 'check-service.bat' },
+  { src: 'restart-service.bat', dest: 'restart-service.bat' },
+  { src: 'test-service.bat', dest: 'test-service.bat' },
+  { src: 'diagnostic-service.bat', dest: 'diagnostic-service.bat' },
+  { src: 'test-exe.bat', dest: 'test-exe.bat' },
 ];
 
 // Créer aussi install.bat et uninstall.bat dans dist
@@ -55,15 +62,15 @@ if %errorLevel% neq 0 (
     echo.
     echo Veuillez:
     echo   1. Fermer cette fenêtre
-    echo   2. Clic droit sur install-service.ps1
-    echo   3. Selectionner "Exécuter avec PowerShell" (en tant qu'administrateur)
+    echo   2. Clic droit sur install-service.bat
+    echo   3. Selectionner "Exécuter en tant qu'administrateur"
     echo.
     pause
     exit /b 1
 )
 echo.
-echo Lancement de l'installation PowerShell...
-powershell -ExecutionPolicy Bypass -File "%~dp0install-service.ps1"
+echo Lancement de l'installation...
+call "%~dp0install-service.bat"
 pause
 `;
 
