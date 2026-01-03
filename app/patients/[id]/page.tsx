@@ -244,7 +244,7 @@ export default function PatientDetailPage() {
       
       if (type === "RENEWAL_END") {
         yOffset = yOffset + baseFontSize * 0.9;
-        page.drawText("⚠️ DERNIÈRE ORDO", {
+        page.drawText("! DERNIERE ORDO", {
           x: textX,
           y: textY - yOffset,
           size: baseFontSize * 0.7,

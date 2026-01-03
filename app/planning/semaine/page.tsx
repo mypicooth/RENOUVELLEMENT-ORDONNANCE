@@ -182,6 +182,129 @@ export default function PlanningSemainePage() {
     window.print();
   };
 
+  const generateQRCodePDFForRenewal = async (renewal: RenewalEvent) => {
+    try {
+      setGeneratingPDF(renewal.id);
+      
+      const pdfDoc = await PDFDocument.create();
+      const widthMM = 55;
+      const heightMM = 25;
+      const widthPt = widthMM * 2.83465;
+      const heightPt = heightMM * 2.83465;
+      
+      const QRCodeLib = await import("qrcode");
+      const helveticaBold = await pdfDoc.embedFont("Helvetica-Bold");
+      
+      const page = pdfDoc.addPage([widthPt, heightPt]);
+      const isLastRenewal = renewal.index === renewal.prescriptionCycle.nb_renouvellements;
+      
+      const qrCodeData = JSON.stringify({
+        renewalId: renewal.id,
+        type: isLastRenewal ? "RENEWAL_END" : "RENEWAL",
+      });
+      
+      const qrCodeDataUrl = await QRCodeLib.default.toDataURL(qrCodeData, {
+        width: 200,
+        margin: 0,
+        color: { dark: "#000000", light: "#FFFFFF" },
+      });
+      
+      const imageBytes = await fetch(qrCodeDataUrl).then((res) => res.arrayBuffer());
+      const qrImage = await pdfDoc.embedPng(imageBytes);
+      
+      const qrSizeMM = 20;
+      const qrSizePt = qrSizeMM * 2.83465;
+      const marginMM = 2;
+      const marginPt = marginMM * 2.83465;
+      
+      page.drawImage(qrImage, {
+        x: marginPt,
+        y: heightPt - marginPt - qrSizePt,
+        width: qrSizePt,
+        height: qrSizePt,
+      });
+      
+      const baseFontSize = 16;
+      const textX = marginPt + qrSizePt + marginPt;
+      const textY = heightPt - marginPt;
+      
+      page.drawText(renewal.prescriptionCycle.patient.nom.toUpperCase(), {
+        x: textX,
+        y: textY - baseFontSize * 0.8,
+        size: baseFontSize,
+        color: rgb(0, 0, 0),
+        font: helveticaBold,
+      });
+      
+      page.drawText(renewal.prescriptionCycle.patient.prenom, {
+        x: textX,
+        y: textY - baseFontSize * 1.8,
+        size: baseFontSize,
+        color: rgb(0, 0, 0),
+        font: helveticaBold,
+      });
+      
+      const dateText = format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr });
+      page.drawText(dateText, {
+        x: textX,
+        y: textY - baseFontSize * 2.5,
+        size: baseFontSize * 0.85,
+        color: rgb(0.4, 0.4, 0.4),
+        font: helveticaBold,
+      });
+      
+      let yOffset = baseFontSize * 3.3;
+      if (renewal.date_delivrance) {
+        const dateDelivranceText = `Delivre: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
+        page.drawText(dateDelivranceText, {
+          x: textX,
+          y: textY - yOffset,
+          size: baseFontSize * 0.85,
+          color: rgb(0, 0.4, 0.8),
+          font: helveticaBold,
+        });
+        yOffset = baseFontSize * 4.1;
+      }
+      
+      page.drawText(`R${renewal.index}`, {
+        x: textX,
+        y: textY - yOffset,
+        size: baseFontSize * 0.85,
+        color: rgb(0.3, 0.3, 0.3),
+        font: helveticaBold,
+      });
+      
+      if (isLastRenewal) {
+        yOffset = yOffset + baseFontSize * 0.9;
+        page.drawText("! DERNIERE ORDO", {
+          x: textX,
+          y: textY - yOffset,
+          size: baseFontSize * 0.7,
+          color: rgb(0.83, 0.18, 0.18),
+          font: helveticaBold,
+        });
+      }
+      
+      const pdfBytes = await pdfDoc.save();
+      const bytes = new Uint8Array(pdfBytes);
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `QR_${renewal.prescriptionCycle.patient.nom}_${renewal.prescriptionCycle.patient.prenom}_R${renewal.index}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      setGeneratingPDF(null);
+    } catch (error) {
+      console.error("Erreur génération PDF:", error);
+      alert("Erreur lors de la génération du PDF");
+      setGeneratingPDF(null);
+    }
+  };
+
   const generateQRCodesPDF = async () => {
     if (!selectedDate) {
       alert("Veuillez sélectionner une date");
@@ -312,7 +435,7 @@ export default function PlanningSemainePage() {
         // Note pour le dernier renouvellement
         if (isLastRenewal) {
           yOffset = yOffset + nomSize * 0.9;
-          page.drawText("⚠️ DERNIÈRE ORDO", {
+          page.drawText("! DERNIERE ORDO", {
             x: textX,
             y: textY - yOffset,
             size: baseFontSize * 0.7,
@@ -700,6 +823,14 @@ export default function PlanningSemainePage() {
                                     title="Voir la fiche patient"
                                   >
                                     👤 Fiche
+                                  </button>
+                                  <button
+                                    onClick={() => generateQRCodePDFForRenewal(renewal)}
+                                    disabled={generatingPDF === renewal.id}
+                                    className="px-3 py-1 text-xs font-medium text-green-700 bg-green-50 border border-green-300 rounded hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Imprimer le QR code"
+                                  >
+                                    {generatingPDF === renewal.id ? "..." : "📱 QR"}
                                   </button>
                                   {renewal.statut === "A_PREPARER" && (
                                     <button
