@@ -205,19 +205,19 @@ export default function HomePage() {
               }
               body {
                 margin: 0;
-                padding: 2mm;
+                padding: 1.5mm;
                 width: 55mm;
                 height: 25mm;
                 font-family: Arial, sans-serif;
                 display: flex;
                 align-items: center;
-                gap: 2mm;
+                gap: 1.5mm;
                 overflow: hidden;
               }
               .qr-container {
                 flex-shrink: 0;
-                width: 20mm;
-                height: 20mm;
+                width: 18mm;
+                height: 18mm;
               }
               .qr-container img {
                 width: 100%;
@@ -236,40 +236,50 @@ export default function HomePage() {
               }
               .nom {
                 font-weight: bold;
-                font-size: 16px;
+                font-size: 15px;
                 text-transform: uppercase;
-                line-height: 1.2;
-                margin-bottom: 1mm;
+                line-height: 1.1;
+                margin-bottom: 0.5mm;
                 word-wrap: break-word;
                 overflow-wrap: break-word;
               }
               .prenom {
                 font-weight: bold;
-                font-size: 16px;
-                line-height: 1.2;
-                margin-bottom: 1mm;
+                font-size: 15px;
+                line-height: 1.1;
+                margin-bottom: 0.5mm;
                 word-wrap: break-word;
                 overflow-wrap: break-word;
               }
               .date {
-                font-size: 16px;
+                font-size: 12px;
                 color: #666;
                 font-weight: bold;
-                margin-top: 0.5mm;
-                margin-bottom: 0.5mm;
+                margin-top: 0.2mm;
+                margin-bottom: 0.2mm;
+                line-height: 1.1;
               }
               .date-delivrance {
-                font-size: 16px;
+                font-size: 12px;
                 color: #0066cc;
                 font-weight: bold;
-                margin-top: 0.5mm;
-                margin-bottom: 0.5mm;
+                margin-top: 0.2mm;
+                margin-bottom: 0.2mm;
+                line-height: 1.1;
               }
               .renouvellement {
-                font-size: 16px;
+                font-size: 12px;
                 color: #999;
                 font-weight: bold;
-                margin-top: 0.5mm;
+                margin-top: 0.2mm;
+                line-height: 1.1;
+              }
+              .note-derniere {
+                font-size: 10px;
+                color: #d32f2f;
+                font-weight: bold;
+                margin-top: 0.3mm;
+                line-height: 1.0;
               }
               @media print {
                 body {
@@ -289,7 +299,7 @@ export default function HomePage() {
               <div class="date">${dateText}</div>
               ${dateDelivranceText ? `<div class="date-delivrance">✓ Délivré: ${dateDelivranceText}</div>` : ''}
               <div class="renouvellement">R${renewal.index}</div>
-              ${isLastRenewal ? '<div class="note-derniere" style="font-size: 14px; color: #d32f2f; font-weight: bold; margin-top: 1mm;">⚠️ DERNIÈRE ORDO</div>' : ''}
+              ${isLastRenewal ? '<div class="note-derniere">⚠️ DERNIÈRE ORDO</div>' : ''}
             </div>
             <script>
               window.onload = function() {
@@ -394,22 +404,22 @@ export default function HomePage() {
         font: helveticaBold,
       });
       
-      // Date théorique (même taille que nom/prénom)
+      // Date théorique (légèrement réduite pour faire de la place)
       const dateText = format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr });
-      const dateSize = baseFontSize;
+      const dateSize = baseFontSize * 0.85;
       page.drawText(dateText, {
         x: textX,
-        y: textY - nomSize * 2.8,
+        y: textY - nomSize * 2.5,
         size: dateSize,
         color: rgb(0.4, 0.4, 0.4),
         font: helveticaBold,
       });
       
-      // Date de délivrance (si disponible) - même taille
-      let yOffset = nomSize * 3.8;
+      // Date de délivrance (si disponible) - légèrement réduite
+      let yOffset = nomSize * 3.3;
       if (renewal.date_delivrance) {
         const dateDelivranceText = `✓ Délivré: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
-        const delivranceSize = baseFontSize;
+        const delivranceSize = baseFontSize * 0.85;
         page.drawText(dateDelivranceText, {
           x: textX,
           y: textY - yOffset,
@@ -417,11 +427,11 @@ export default function HomePage() {
           color: rgb(0, 0.4, 0.8),
           font: helveticaBold,
         });
-        yOffset = nomSize * 4.8;
+        yOffset = nomSize * 4.1;
       }
       
-      // Numéro de renouvellement (même taille que nom/prénom)
-      const renouvellementSize = baseFontSize;
+      // Numéro de renouvellement (légèrement réduit)
+      const renouvellementSize = baseFontSize * 0.85;
       page.drawText(`R${renewal.index}`, {
         x: textX,
         y: textY - yOffset,
@@ -430,13 +440,13 @@ export default function HomePage() {
         font: helveticaBold,
       });
       
-      // Note pour le dernier renouvellement
+      // Note pour le dernier renouvellement (plus petite et compacte)
       if (isLastRenewal) {
-        yOffset = yOffset + nomSize * 1.2;
+        yOffset = yOffset + nomSize * 0.9;
         page.drawText("⚠️ DERNIÈRE ORDO", {
           x: textX,
           y: textY - yOffset,
-          size: baseFontSize * 0.85,
+          size: baseFontSize * 0.7,
           color: rgb(0.83, 0.18, 0.18), // #d32f2f
           font: helveticaBold,
         });
@@ -550,22 +560,22 @@ export default function HomePage() {
           font: helveticaBold,
         });
         
-        // Date théorique (même taille que nom/prénom)
+        // Date théorique (légèrement réduite pour faire de la place)
         const dateText = format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr });
-        const dateSize = baseFontSize;
+        const dateSize = baseFontSize * 0.85;
         page.drawText(dateText, {
           x: textX,
-          y: textY - nomSize * 2.8,
+          y: textY - nomSize * 2.5,
           size: dateSize,
           color: rgb(0.4, 0.4, 0.4),
           font: helveticaBold,
         });
         
-        // Date de délivrance (si disponible) - même taille
-        let yOffset = nomSize * 3.8;
+        // Date de délivrance (si disponible) - légèrement réduite
+        let yOffset = nomSize * 3.3;
         if (renewal.date_delivrance) {
           const dateDelivranceText = `✓ Délivré: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
-          const delivranceSize = baseFontSize;
+          const delivranceSize = baseFontSize * 0.85;
           page.drawText(dateDelivranceText, {
             x: textX,
             y: textY - yOffset,
@@ -573,11 +583,11 @@ export default function HomePage() {
             color: rgb(0, 0.4, 0.8),
             font: helveticaBold,
           });
-          yOffset = nomSize * 4.8;
+          yOffset = nomSize * 4.1;
         }
         
-        // Numéro de renouvellement (même taille que nom/prénom)
-        const renouvellementSize = baseFontSize;
+        // Numéro de renouvellement (légèrement réduit)
+        const renouvellementSize = baseFontSize * 0.85;
         page.drawText(`R${renewal.index}`, {
           x: textX,
           y: textY - yOffset,
@@ -586,13 +596,13 @@ export default function HomePage() {
           font: helveticaBold,
         });
         
-        // Note pour le dernier renouvellement
+        // Note pour le dernier renouvellement (plus petite et compacte)
         if (isLastRenewal) {
-          yOffset = yOffset + nomSize * 1.2;
+          yOffset = yOffset + nomSize * 0.9;
           page.drawText("⚠️ DERNIÈRE ORDO", {
             x: textX,
             y: textY - yOffset,
-            size: baseFontSize * 0.85,
+            size: baseFontSize * 0.7,
             color: rgb(0.83, 0.18, 0.18), // #d32f2f
             font: helveticaBold,
           });
