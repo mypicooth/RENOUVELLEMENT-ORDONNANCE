@@ -896,25 +896,6 @@ export default function PatientDetailPage() {
                 >
                   📱 QR Codes
                 </button>
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="date"
-                    value={selectedDateForQR}
-                    onChange={(e) => {
-                      setSelectedDateForQR(e.target.value);
-                      loadRenewalsByDate(e.target.value);
-                    }}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-                  />
-                  <button
-                    onClick={generateQRCodesPDFForDate}
-                    disabled={generatingPDF || dateRenewals.length === 0}
-                    className="px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Imprimer les QR codes de cette date"
-                  >
-                    {generatingPDF ? "Génération..." : "📱 Imprimer QR codes"}
-                  </button>
-                </div>
                 <button
                   onClick={() => setShowNewCycle(!showNewCycle)}
                   className="px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
@@ -1033,15 +1014,27 @@ export default function PatientDetailPage() {
                       </span>
                     </div>
                     <div className="mt-3">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-2 no-print">
                         <p className="text-sm font-medium text-gray-900">Renouvellements:</p>
-                        <button
-                          onClick={() => window.print()}
-                          className="text-xs px-2 py-1 border border-gray-300 rounded text-gray-700 bg-white hover:bg-gray-50 no-print"
-                          title="Imprimer les QR codes"
-                        >
-                          🖨️ Imprimer QR codes
-                        </button>
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="date"
+                            value={selectedDateForQR}
+                            onChange={(e) => {
+                              setSelectedDateForQR(e.target.value);
+                              loadRenewalsByDate(e.target.value);
+                            }}
+                            className="px-2 py-1 text-xs border border-gray-300 rounded"
+                          />
+                          <button
+                            onClick={generateQRCodesPDFForDate}
+                            disabled={generatingPDF || dateRenewals.length === 0}
+                            className="px-3 py-1 text-xs border border-blue-300 rounded text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Imprimer les QR codes de cette date"
+                          >
+                            {generatingPDF ? "..." : "📱 Imprimer QR codes"}
+                          </button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                         {cycle.renewals.map((renewal) => {
