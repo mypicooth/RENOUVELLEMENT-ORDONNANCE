@@ -753,7 +753,7 @@ export default function HomePage() {
                 {format(new Date(), "EEEE d MMMM yyyy", { locale: fr })}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={handlePrint}
                 className="flex-1 sm:flex-none px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 no-print"
@@ -761,7 +761,15 @@ export default function HomePage() {
                 🖨️ Imprimer
               </button>
               <button
-                onClick={() => setShowQRCodes(!showQRCodes)}
+                onClick={() => {
+                  setShowQRCodes(!showQRCodes);
+                  if (!showQRCodes) {
+                    // Si on affiche les QR codes, charger les renouvellements du jour
+                    loadTodayRenewals();
+                    setShowOldRenewals(false);
+                    setSelectedDate(format(new Date(), "yyyy-MM-dd"));
+                  }
+                }}
                 className="flex-1 sm:flex-none px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 no-print"
               >
                 {showQRCodes ? "Masquer QR codes" : "📱 Imprimer QR codes"}
@@ -1075,58 +1083,31 @@ export default function HomePage() {
           {/* Section d'impression des QR codes */}
           {showQRCodes && (
             <div className="mt-6 bg-white shadow rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4 no-print flex-wrap gap-2">
-                <h2 className="text-lg font-semibold">
-                  {showOldRenewals ? (
-                    (() => {
-                      const selected = new Date(selectedDate);
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      selected.setHours(0, 0, 0, 0);
-                      const isFuture = selected > today;
-                      const isPast = selected < today;
-                      const isToday = selected.getTime() === today.getTime();
-                      
-                      if (isFuture) {
-                        return `Étiquettes QR codes du ${format(new Date(selectedDate), "dd/MM/yyyy", { locale: fr })} (à l'avance)`;
-                      } else if (isPast) {
-                        return `Étiquettes QR codes du ${format(new Date(selectedDate), "dd/MM/yyyy", { locale: fr })} (anciennes)`;
-                      } else {
-                        return `Étiquettes QR codes du ${format(new Date(selectedDate), "dd/MM/yyyy", { locale: fr })}`;
-                      }
-                    })()
-                  ) : (
-                    "Étiquettes QR codes du jour"
-                  )}
-                </h2>
-                <div className="flex gap-2 items-center flex-wrap">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={showOldRenewals}
-                      onChange={(e) => {
-                        setShowOldRenewals(e.target.checked);
-                        if (e.target.checked) {
-                          loadRenewalsByDate(selectedDate);
+              <div className="mb-4 no-print">
+                <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                  <h2 className="text-lg font-semibold">
+                    {showOldRenewals ? (
+                      (() => {
+                        const selected = new Date(selectedDate);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        selected.setHours(0, 0, 0, 0);
+                        const isFuture = selected > today;
+                        const isPast = selected < today;
+                        const isToday = selected.getTime() === today.getTime();
+                        
+                        if (isFuture) {
+                          return `Étiquettes QR codes du ${format(new Date(selectedDate), "dd/MM/yyyy", { locale: fr })} (à l'avance)`;
+                        } else if (isPast) {
+                          return `Étiquettes QR codes du ${format(new Date(selectedDate), "dd/MM/yyyy", { locale: fr })} (anciennes)`;
                         } else {
-                          loadTodayRenewals();
+                          return `Étiquettes QR codes du ${format(new Date(selectedDate), "dd/MM/yyyy", { locale: fr })}`;
                         }
-                      }}
-                      className="rounded"
-                    />
-                    <span className="text-sm">Sélectionner une date</span>
-                  </label>
-                  {showOldRenewals && (
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => {
-                        setSelectedDate(e.target.value);
-                        loadRenewalsByDate(e.target.value);
-                      }}
-                      className="px-3 py-1 border rounded text-sm"
-                    />
-                  )}
+                      })()
+                    ) : (
+                      "Étiquettes QR codes du jour"
+                    )}
+                  </h2>
                   <button
                     onClick={generateAllQRCodesPDF}
                     disabled={generatingPDF === "all"}
@@ -1134,6 +1115,51 @@ export default function HomePage() {
                   >
                     {generatingPDF === "all" ? "Génération..." : "📥 Télécharger toutes les étiquettes (PDF)"}
                   </button>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="dateSelection"
+                        checked={!showOldRenewals}
+                        onChange={() => {
+                          setShowOldRenewals(false);
+                          loadTodayRenewals();
+                          setSelectedDate(format(new Date(), "yyyy-MM-dd"));
+                        }}
+                        className="rounded"
+                      />
+                      <span className="text-sm font-medium">Aujourd&apos;hui</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="dateSelection"
+                        checked={showOldRenewals}
+                        onChange={() => {
+                          setShowOldRenewals(true);
+                          loadRenewalsByDate(selectedDate);
+                        }}
+                        className="rounded"
+                      />
+                      <span className="text-sm font-medium">Sélectionner une date</span>
+                    </label>
+                    {showOldRenewals && (
+                      <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => {
+                          setSelectedDate(e.target.value);
+                          loadRenewalsByDate(e.target.value);
+                        }}
+                        className="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2">
+                    💡 Vous pouvez sélectionner une date passée pour imprimer les anciens QR codes ou une date future pour imprimer à l&apos;avance.
+                  </p>
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 print:qr-labels-grid">

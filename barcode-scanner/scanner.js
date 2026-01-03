@@ -53,7 +53,7 @@ try {
 }
 
 // Charger les autres modules avec gestion d'erreurs
-let axios, clipboardy, os, loadConfig;
+let axios, clipboardy, os, loadConfig, child_process;
 try {
   if (startupLogger) startupLogger.writeStartupLog('Chargement des modules...');
   axios = require('axios');
@@ -62,6 +62,8 @@ try {
   if (startupLogger) startupLogger.writeStartupLog('  ✓ clipboardy chargé');
   os = require('os');
   if (startupLogger) startupLogger.writeStartupLog('  ✓ os chargé');
+  child_process = require('child_process');
+  if (startupLogger) startupLogger.writeStartupLog('  ✓ child_process chargé');
   const scannerConfig = require('./scanner-config');
   loadConfig = scannerConfig.loadConfig;
   if (startupLogger) startupLogger.writeStartupLog('  ✓ scanner-config chargé');
@@ -127,49 +129,59 @@ function parseQRCode(content) {
 }
 
 /**
- * Envoie le scan à l'API
+ * Ouvre la page de scan dans le navigateur
  */
-async function sendScanToAPI(renewalId, type) {
+function openScanPage(renewalId, type) {
   try {
     scanCount++;
     const timestamp = new Date().toLocaleTimeString();
     logger.info(`Scan #${scanCount} détecté: ${type} pour ${renewalId.substring(0, 20)}...`);
     
-    // Utiliser l'endpoint public avec token API si disponible
-    const endpoint = API_TOKEN 
-      ? `${CONFIG.API_URL}/api/renewals/scan-public`
-      : `${CONFIG.API_URL}/api/renewals/scan`;
+    // Construire l'URL de la page de scan
+    const scanUrl = `${CONFIG.API_URL}/scan?renewalId=${encodeURIComponent(renewalId)}&type=${encodeURIComponent(type)}`;
     
-    const payload = API_TOKEN
-      ? { renewalId, type, apiToken: API_TOKEN }
-      : { renewalId, type };
+    logger.info(`Ouverture de la page de scan: ${scanUrl}`);
     
-    const response = await axios.post(endpoint, payload, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      timeout: 10000,
-    });
-
-    if (response.data.success) {
-      logger.info(`✅ ${response.data.message}`);
-      return { success: true, message: response.data.message };
+    // Ouvrir le navigateur par défaut
+    const platform = os.platform();
+    let command;
+    
+    if (platform === 'win32') {
+      // Windows
+      command = `start "" "${scanUrl}"`;
+      child_process.exec(command, (error) => {
+        if (error) {
+          logger.error(`Erreur ouverture navigateur: ${error.message}`);
+        } else {
+          logger.info('✅ Page de scan ouverte dans le navigateur');
+        }
+      });
+    } else if (platform === 'darwin') {
+      // macOS
+      command = `open "${scanUrl}"`;
+      child_process.exec(command, (error) => {
+        if (error) {
+          logger.error(`Erreur ouverture navigateur: ${error.message}`);
+        } else {
+          logger.info('✅ Page de scan ouverte dans le navigateur');
+        }
+      });
     } else {
-      logger.error(`❌ Erreur: ${response.data.error || 'Erreur inconnue'}`);
-      return { success: false, error: response.data.error };
+      // Linux et autres
+      command = `xdg-open "${scanUrl}"`;
+      child_process.exec(command, (error) => {
+        if (error) {
+          logger.error(`Erreur ouverture navigateur: ${error.message}`);
+        } else {
+          logger.info('✅ Page de scan ouverte dans le navigateur');
+        }
+      });
     }
+    
+    return { success: true, message: 'Page de scan ouverte' };
   } catch (error) {
-    if (error.response) {
-      const errorMsg = error.response.data?.error || error.message;
-      logger.error(`❌ Erreur API (${error.response.status}): ${errorMsg}`);
-      return { success: false, error: errorMsg };
-    } else if (error.request) {
-      logger.error(`❌ Pas de réponse du serveur. Vérifiez que l'application web est démarrée sur ${CONFIG.API_URL}`);
-      return { success: false, error: 'Serveur inaccessible' };
-    } else {
-      logger.error(`❌ Erreur: ${error.message}`);
-      return { success: false, error: error.message };
-    }
+    logger.error(`❌ Erreur ouverture page de scan: ${error.message}`);
+    return { success: false, error: error.message };
   }
 }
 
@@ -209,7 +221,8 @@ async function checkClipboard() {
         isProcessing = true;
         lastClipboardContent = currentContent;
         
-        const result = await sendScanToAPI(qrData.renewalId, qrData.type);
+        // Ouvrir la page de scan dans le navigateur
+        const result = openScanPage(qrData.renewalId, qrData.type);
         
         // Réinitialiser après un délai pour éviter les scans multiples
         setTimeout(() => {
