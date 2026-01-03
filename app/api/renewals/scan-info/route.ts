@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 /**
  * Endpoint pour récupérer les informations d'un renouvellement avant confirmation
  */

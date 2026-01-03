@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { addDays, startOfDay } from "date-fns";
 import { adjustToWorkingDay } from "@/lib/prescription";
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 /**
  * Endpoint public pour confirmer la délivrance (utilisé depuis la page de scan)
  * Sécurisé avec un token API optionnel
