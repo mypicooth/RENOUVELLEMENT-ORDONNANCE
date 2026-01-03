@@ -152,6 +152,140 @@ export default function HomePage() {
     window.print();
   };
 
+  const printQRCode = async (renewal: RenewalEvent) => {
+    try {
+      const qrCodeData = JSON.stringify({
+        renewalId: renewal.id,
+        type: "RENEWAL",
+      });
+
+      // Générer le QR code en image
+      const QRCodeLib = await import("qrcode");
+      const qrCodeDataUrl = await QRCodeLib.default.toDataURL(qrCodeData, {
+        width: 200,
+        margin: 0,
+        color: {
+          dark: "#000000",
+          light: "#FFFFFF",
+        },
+      });
+
+      // Créer une nouvelle fenêtre pour l'impression
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        alert("Veuillez autoriser les pop-ups pour imprimer");
+        return;
+      }
+
+      const dateText = format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr });
+
+      // Créer le contenu HTML pour l'impression
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>QR Code - ${renewal.prescriptionCycle.patient.nom}</title>
+            <style>
+              @page {
+                size: 55mm 25mm;
+                margin: 0;
+              }
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+              }
+              body {
+                margin: 0;
+                padding: 2mm;
+                width: 55mm;
+                height: 25mm;
+                font-family: Arial, sans-serif;
+                display: flex;
+                align-items: center;
+                gap: 2mm;
+                overflow: hidden;
+              }
+              .qr-container {
+                flex-shrink: 0;
+                width: 20mm;
+                height: 20mm;
+              }
+              .qr-container img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+              }
+              .info-container {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                font-size: 8px;
+                line-height: 1.2;
+                min-width: 0;
+              }
+              .nom {
+                font-weight: bold;
+                font-size: 8px;
+                text-transform: uppercase;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+              .prenom {
+                font-size: 7px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+              .date {
+                font-size: 6px;
+                color: #666;
+                margin-top: 1mm;
+              }
+              .renouvellement {
+                font-size: 6px;
+                color: #999;
+              }
+              @media print {
+                body {
+                  margin: 0;
+                  padding: 2mm;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="qr-container">
+              <img src="${qrCodeDataUrl}" alt="QR Code" />
+            </div>
+            <div class="info-container">
+              <div class="nom">${renewal.prescriptionCycle.patient.nom.toUpperCase()}</div>
+              <div class="prenom">${renewal.prescriptionCycle.patient.prenom}</div>
+              <div class="date">${dateText}</div>
+              <div class="renouvellement">R${renewal.index}</div>
+            </div>
+            <script>
+              window.onload = function() {
+                setTimeout(function() {
+                  window.print();
+                  window.onafterprint = function() {
+                    window.close();
+                  };
+                }, 500);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    } catch (error) {
+      console.error("Erreur impression QR code:", error);
+      alert("Erreur lors de l'impression du QR code");
+    }
+  };
+
   const generateQRCodePDF = async (renewal: RenewalEvent) => {
     try {
       setGeneratingPDF(renewal.id);
@@ -847,13 +981,23 @@ export default function HomePage() {
                             </div>
                           </div>
                         </div>
-                        <button
-                          onClick={() => generateQRCodePDF(renewal)}
-                          disabled={generatingPDF === renewal.id}
-                          className="mt-1 w-full px-2 py-1 text-[8px] border border-blue-300 rounded text-blue-700 bg-blue-50 hover:bg-blue-100 no-print disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {generatingPDF === renewal.id ? "Génération..." : "📥 Télécharger PDF"}
-                        </button>
+                        <div className="mt-1 flex gap-1 no-print">
+                          <button
+                            onClick={() => printQRCode(renewal)}
+                            className="flex-1 px-2 py-1 text-[8px] border border-green-300 rounded text-green-700 bg-green-50 hover:bg-green-100"
+                            title="Imprimer directement"
+                          >
+                            🖨️ Imprimer
+                          </button>
+                          <button
+                            onClick={() => generateQRCodePDF(renewal)}
+                            disabled={generatingPDF === renewal.id}
+                            className="flex-1 px-2 py-1 text-[8px] border border-blue-300 rounded text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Télécharger PDF"
+                          >
+                            {generatingPDF === renewal.id ? "..." : "📥 PDF"}
+                          </button>
+                        </div>
                       </div>
                     );
                   })}

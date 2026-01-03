@@ -22,3 +22,4 @@ svc.on('error', function(err) {
 console.log('Désinstallation du service...');
 svc.uninstall();
 
+
