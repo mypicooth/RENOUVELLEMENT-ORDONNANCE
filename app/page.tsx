@@ -16,6 +16,7 @@ interface RenewalEvent {
   date_theorique: string;
   statut: RenewalEventStatus;
   date_sms?: string | null;
+  date_delivrance?: string | null;
   prescriptionCycle: {
     patient: {
       id: string;
@@ -227,14 +228,15 @@ export default function HomePage() {
               }
               .nom {
                 font-weight: bold;
-                font-size: 8px;
+                font-size: 10px;
                 text-transform: uppercase;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
               }
               .prenom {
-                font-size: 7px;
+                font-weight: bold;
+                font-size: 9px;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -243,6 +245,12 @@ export default function HomePage() {
                 font-size: 6px;
                 color: #666;
                 margin-top: 1mm;
+              }
+              .date-delivrance {
+                font-size: 7px;
+                color: #0066cc;
+                font-weight: bold;
+                margin-top: 0.5mm;
               }
               .renouvellement {
                 font-size: 6px;
@@ -264,6 +272,7 @@ export default function HomePage() {
               <div class="nom">${renewal.prescriptionCycle.patient.nom.toUpperCase()}</div>
               <div class="prenom">${renewal.prescriptionCycle.patient.prenom}</div>
               <div class="date">${dateText}</div>
+              ${dateDelivranceText ? `<div class="date-delivrance">✓ Délivré: ${dateDelivranceText}</div>` : ''}
               <div class="renouvellement">R${renewal.index}</div>
             </div>
             <script>
@@ -338,7 +347,7 @@ export default function HomePage() {
       });
       
       // Ajouter le texte du patient
-      const fontSize = 8;
+      const fontSize = 10;
       const textX = marginPt + qrSizePt + marginPt;
       const textY = heightPt - marginPt;
       
@@ -346,7 +355,7 @@ export default function HomePage() {
       const helveticaBold = await pdfDoc.embedFont("Helvetica-Bold");
       const helvetica = await pdfDoc.embedFont("Helvetica");
       
-      // Nom en majuscules
+      // Nom en majuscules (agrandi et en gras)
       page.drawText(renewal.prescriptionCycle.patient.nom.toUpperCase(), {
         x: textX,
         y: textY - fontSize,
@@ -355,16 +364,16 @@ export default function HomePage() {
         font: helveticaBold,
       });
       
-      // Prénom
+      // Prénom (agrandi et en gras)
       page.drawText(renewal.prescriptionCycle.patient.prenom, {
         x: textX,
-        y: textY - fontSize * 2.5,
+        y: textY - fontSize * 2.2,
         size: fontSize * 0.9,
         color: rgb(0, 0, 0),
-        font: helvetica,
+        font: helveticaBold,
       });
       
-      // Date
+      // Date théorique
       const dateText = format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr });
       page.drawText(dateText, {
         x: textX,
@@ -374,10 +383,24 @@ export default function HomePage() {
         font: helvetica,
       });
       
+      // Date de délivrance (si disponible)
+      let yOffset = fontSize * 5.2;
+      if (renewal.date_delivrance) {
+        const dateDelivranceText = `✓ Délivré: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
+        page.drawText(dateDelivranceText, {
+          x: textX,
+          y: textY - yOffset,
+          size: fontSize * 0.75,
+          color: rgb(0, 0.4, 0.8),
+          font: helveticaBold,
+        });
+        yOffset = fontSize * 6.5;
+      }
+      
       // Numéro de renouvellement
       page.drawText(`R${renewal.index}`, {
         x: textX,
-        y: textY - fontSize * 5.5,
+        y: textY - yOffset,
         size: fontSize * 0.8,
         color: rgb(0.3, 0.3, 0.3),
         font: helvetica,
@@ -464,7 +487,7 @@ export default function HomePage() {
           height: qrSizePt,
         });
         
-        const fontSize = 8;
+        const fontSize = 10;
         const textX = marginPt + qrSizePt + marginPt;
         const textY = heightPt - marginPt;
         
@@ -478,10 +501,10 @@ export default function HomePage() {
         
         page.drawText(renewal.prescriptionCycle.patient.prenom, {
           x: textX,
-          y: textY - fontSize * 2.5,
+          y: textY - fontSize * 2.2,
           size: fontSize * 0.9,
           color: rgb(0, 0, 0),
-          font: helvetica,
+          font: helveticaBold,
         });
         
         const dateText = format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr });
@@ -493,9 +516,23 @@ export default function HomePage() {
           font: helvetica,
         });
         
+        // Date de délivrance (si disponible)
+        let yOffset = fontSize * 5.2;
+        if (renewal.date_delivrance) {
+          const dateDelivranceText = `✓ Délivré: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
+          page.drawText(dateDelivranceText, {
+            x: textX,
+            y: textY - yOffset,
+            size: fontSize * 0.75,
+            color: rgb(0, 0.4, 0.8),
+            font: helveticaBold,
+          });
+          yOffset = fontSize * 6.5;
+        }
+        
         page.drawText(`R${renewal.index}`, {
           x: textX,
-          y: textY - fontSize * 5.5,
+          y: textY - yOffset,
           size: fontSize * 0.8,
           color: rgb(0.3, 0.3, 0.3),
           font: helvetica,
