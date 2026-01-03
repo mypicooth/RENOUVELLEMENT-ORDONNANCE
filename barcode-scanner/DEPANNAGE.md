@@ -203,3 +203,4 @@ Si le problème persiste :
 3. Vérifier que l'URL de l'API est accessible depuis le poste
 4. Réinstaller le service si nécessaire
 
+

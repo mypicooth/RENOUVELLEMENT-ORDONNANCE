@@ -20,3 +20,5 @@ OU EN UNE SEULE LIGNE :
 cd C:\Users\abbas\Desktop\RENOUVELLEMENT-ORDONNANCE\barcode-scanner; Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force; .\install-service.ps1
 
 
+
+

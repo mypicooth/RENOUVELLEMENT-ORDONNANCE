@@ -12,3 +12,5 @@ WHERE table_name = 'renewal_events'
 AND column_name = 'date_delivrance';
 
 
+
+

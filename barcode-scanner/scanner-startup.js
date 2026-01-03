@@ -77,3 +77,4 @@ writeStartupLog(`Working directory: ${process.cwd()}`);
 // Exporter la fonction pour qu'elle soit utilisable ailleurs
 module.exports = { writeStartupLog, startupLogFile };
 
+

@@ -120,3 +120,4 @@ sc delete RenouvellementQRScanner
 - Après modification de `config.json`, redémarrer le service
 - Les logs sont dans l'Observateur d'événements Windows
 
+

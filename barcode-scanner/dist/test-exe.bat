@@ -54,3 +54,4 @@ if exist "%TEMP%\renouvellement-scanner-startup.log" (
 echo.
 pause
 
+

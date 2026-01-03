@@ -124,3 +124,4 @@ console.log('✅ Scripts d\'installation créés :');
 console.log('   - install.bat');
 console.log('   - uninstall.bat');
 
+

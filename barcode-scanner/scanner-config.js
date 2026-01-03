@@ -33,7 +33,7 @@ function loadConfig() {
   let config = {
     API_URL: process.env.API_URL || 'http://localhost:3000',
     SCANNER_API_TOKEN: process.env.SCANNER_API_TOKEN || '',
-    SCAN_INTERVAL: parseInt(process.env.SCAN_INTERVAL) || 100,
+    SCAN_INTERVAL: parseInt(process.env.SCAN_INTERVAL) || 50, // Réduire à 50ms pour être plus réactif
     MIN_LENGTH: parseInt(process.env.MIN_LENGTH) || 20,
   };
 

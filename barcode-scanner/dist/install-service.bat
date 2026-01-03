@@ -97,6 +97,17 @@ sc failure "%SERVICE_NAME%" reset= 86400 actions= restart/5000/restart/10000/res
 REM Configurer le type de démarrage automatique
 sc config "%SERVICE_NAME%" start= auto
 
+REM IMPORTANT: Configurer le service pour permettre l'interaction avec le bureau
+REM Cela est nécessaire pour accéder au presse-papiers de l'utilisateur
+echo Configuration de l'interaction avec le bureau...
+sc config "%SERVICE_NAME%" type= interact type= own
+if %errorLevel% neq 0 (
+    echo ⚠️  Attention: Impossible de configurer l'interaction avec le bureau
+    echo    Le service pourrait ne pas pouvoir accéder au presse-papiers
+    echo    Solution alternative: Exécuter l'application en mode démarrage automatique
+    echo    au lieu d'un service Windows
+)
+
 REM Vérifier que le chemin de l'exe est correct
 echo Vérification de la configuration...
 sc qc "%SERVICE_NAME%" | find "%EXE_PATH%" >nul

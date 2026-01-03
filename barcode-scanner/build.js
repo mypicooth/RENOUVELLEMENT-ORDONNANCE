@@ -17,7 +17,31 @@ if (!fs.existsSync(distDir)) {
   fs.mkdirSync(distDir, { recursive: true });
 }
 
+// Créer le dossier logs s'il n'existe pas (nécessaire pour pkg)
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+  console.log('   ✓ Dossier logs créé');
+}
+
 console.log('[1/5] Compilation de l\'application...');
+
+// Arrêter le service et les instances en cours avant compilation
+try {
+  console.log('Vérification des instances en cours...');
+  execSync('net stop RenouvellementQRScanner', { stdio: 'ignore', cwd: __dirname });
+  execSync('timeout /t 2 /nobreak', { stdio: 'ignore', cwd: __dirname });
+} catch (e) {
+  // Ignorer si le service n'existe pas ou n'est pas démarré
+}
+
+try {
+  execSync('taskkill /F /IM renouvellement-scanner.exe', { stdio: 'ignore', cwd: __dirname });
+  execSync('timeout /t 1 /nobreak', { stdio: 'ignore', cwd: __dirname });
+} catch (e) {
+  // Ignorer si aucune instance n'est en cours
+}
+
 try {
   execSync('pkg . --targets node18-win-x64 --output dist/renouvellement-scanner.exe', {
     stdio: 'inherit',
@@ -26,10 +50,93 @@ try {
   console.log('✅ Compilation réussie\n');
 } catch (error) {
   console.error('❌ Erreur lors de la compilation');
+  console.error('💡 Astuce: Assurez-vous que le service est arrêté et qu\'aucune instance de renouvellement-scanner.exe n\'est en cours d\'exécution');
   process.exit(1);
 }
 
 console.log('[2/5] Copie des fichiers de configuration...');
+
+// Copier electron-app.js, scan-window.html et scan-confirm.py dans dist
+try {
+  fs.copyFileSync(
+    path.join(__dirname, 'electron-app.js'),
+    path.join(distDir, 'electron-app.js')
+  );
+  console.log('   ✓ electron-app.js copié');
+} catch (error) {
+  console.warn(`   ⚠️  Erreur copie electron-app.js: ${error.message}`);
+}
+
+try {
+  fs.copyFileSync(
+    path.join(__dirname, 'scan-window.html'),
+    path.join(distDir, 'scan-window.html')
+  );
+  console.log('   ✓ scan-window.html copié');
+} catch (error) {
+  console.warn(`   ⚠️  Erreur copie scan-window.html: ${error.message}`);
+}
+
+try {
+  fs.copyFileSync(
+    path.join(__dirname, 'scan-confirm.py'),
+    path.join(distDir, 'scan-confirm.py')
+  );
+  console.log('   ✓ scan-confirm.py copié');
+} catch (error) {
+  console.warn(`   ⚠️  Erreur copie scan-confirm.py: ${error.message}`);
+}
+
+// Copier Electron dans dist (nécessaire pour la fenêtre native)
+console.log('[2b/5] Copie d\'Electron pour la fenêtre native...');
+try {
+  const electronSource = path.join(__dirname, 'node_modules', 'electron');
+  const electronDest = path.join(distDir, 'node_modules', 'electron');
+  
+  if (fs.existsSync(electronSource)) {
+    // Créer le dossier de destination
+    const electronDestDir = path.dirname(electronDest);
+    if (!fs.existsSync(electronDestDir)) {
+      fs.mkdirSync(electronDestDir, { recursive: true });
+    }
+    
+    // Copier récursivement le dossier Electron
+    const copyRecursiveSync = (src, dest) => {
+      const exists = fs.existsSync(src);
+      const stats = exists && fs.statSync(src);
+      const isDirectory = exists && stats.isDirectory();
+      if (isDirectory) {
+        if (!fs.existsSync(dest)) {
+          fs.mkdirSync(dest);
+        }
+        fs.readdirSync(src).forEach(childItemName => {
+          copyRecursiveSync(
+            path.join(src, childItemName),
+            path.join(dest, childItemName)
+          );
+        });
+      } else {
+        fs.copyFileSync(src, dest);
+      }
+    };
+    
+    if (fs.existsSync(electronDest)) {
+      // Supprimer l'ancien dossier s'il existe
+      fs.rmSync(electronDest, { recursive: true, force: true });
+    }
+    
+    copyRecursiveSync(electronSource, electronDest);
+    console.log('   ✓ Electron copié dans dist/node_modules/');
+  } else {
+    console.warn(`   ⚠️  Electron non trouvé dans ${electronSource}`);
+    console.warn(`   Veuillez exécuter: npm install`);
+  }
+} catch (error) {
+  console.warn(`   ⚠️  Erreur copie Electron: ${error.message}`);
+  console.warn(`   La fenêtre native ne fonctionnera pas, fallback vers le navigateur`);
+}
+
+
 const filesToCopy = [
   { src: 'config.json', dest: 'config.json' },
   { src: 'install-service-standalone.ps1', dest: 'install-service.ps1' },
@@ -40,6 +147,12 @@ const filesToCopy = [
   { src: 'test-service.bat', dest: 'test-service.bat' },
   { src: 'diagnostic-service.bat', dest: 'diagnostic-service.bat' },
   { src: 'test-exe.bat', dest: 'test-exe.bat' },
+  { src: 'test-scan.bat', dest: 'test-scan.bat' },
+  { src: 'install-startup.bat', dest: 'install-startup.bat' },
+  { src: 'stop-and-rebuild.bat', dest: 'stop-and-rebuild.bat' },
+  { src: 'simulate-scan.js', dest: 'simulate-scan.js' },
+  { src: 'simulate-scan.bat', dest: 'simulate-scan.bat' },
+  { src: 'scan-confirm.py', dest: 'scan-confirm.py' },
 ];
 
 // Créer aussi install.bat et uninstall.bat dans dist

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmation de délivrance</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 450px;
+      width: 100%;
+      padding: 32px;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .header h2 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 8px;
+    }
+
+    .header .divider {
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      margin: 0 auto;
+      border-radius: 2px;
+    }
+
+    .info-section {
+      margin-bottom: 24px;
+    }
+
+    .info-item {
+      background: #f7fafc;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border-left: 3px solid #667eea;
+    }
+
+    .info-item label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .info-item .value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #2d3748;
+    }
+
+    .question {
+      text-align: center;
+      font-size: 16px;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 20px;
+      padding: 16px;
+      background: #edf2f7;
+      border-radius: 8px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-yes {
+      background: linear-gradient(135deg, #48bb78, #38a169);
+      color: white;
+    }
+
+    .btn-yes:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+    }
+
+    .btn-no {
+      background: linear-gradient(135deg, #f56565, #e53e3e);
+      color: white;
+    }
+
+    .btn-no:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(245, 101, 101, 0.4);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+    }
+
+    .spinner {
+      border: 3px solid #e2e8f0;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error {
+      text-align: center;
+      padding: 40px;
+    }
+
+    .error-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .error h3 {
+      font-size: 20px;
+      color: #2d3748;
+      margin-bottom: 8px;
+    }
+
+    .error p {
+      color: #718096;
+      margin-bottom: 20px;
+    }
+
+    .success {
+      text-align: center;
+      padding: 40px;
+    }
+
+    .success-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .success h3 {
+      font-size: 20px;
+      color: #2d3748;
+      margin-bottom: 8px;
+    }
+
+    .success p {
+      color: #718096;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p style="color: #718096;">Chargement des informations...</p>
+    </div>
+
+    <div id="error" class="error" style="display: none;">
+      <div class="error-icon">❌</div>
+      <h3>Erreur</h3>
+      <p id="error-message"></p>
+      <button class="btn btn-no" onclick="window.close()">Fermer</button>
+    </div>
+
+    <div id="success" class="success" style="display: none;">
+      <div class="success-icon">✅</div>
+      <h3>Délivrance confirmée</h3>
+      <p>Les médicaments ont été délivrés avec succès.</p>
+    </div>
+
+    <div id="content" style="display: none;">
+      <div class="header">
+        <h2>Confirmation de délivrance</h2>
+        <div class="divider"></div>
+      </div>
+
+      <div class="info-section">
+        <div class="info-item">
+          <label>NOM PRÉNOM</label>
+          <div class="value" id="patient-name"></div>
+        </div>
+
+        <div class="info-item">
+          <label>DATE DE DÉLIVRANCE</label>
+          <div class="value" id="delivery-date"></div>
+        </div>
+
+        <div class="info-item">
+          <label>NUMÉRO DE RENOUVELLEMENT</label>
+          <div class="value" id="renewal-number"></div>
+        </div>
+      </div>
+
+      <div class="question">
+        VOULEZ-VOUS DÉLIVRER LES MÉDICAMENTS ?
+      </div>
+
+      <div class="buttons">
+        <button class="btn btn-yes" id="btn-yes" onclick="handleConfirm(true)">
+          <span>✓</span>
+          <span>OUI</span>
+        </button>
+        <button class="btn btn-no" id="btn-no" onclick="handleConfirm(false)">
+          <span>✗</span>
+          <span>NON</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let scanData = null;
+    let confirming = false;
+
+    // Récupérer les paramètres depuis l'URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const renewalId = urlParams.get('renewalId');
+    const type = urlParams.get('type');
+    const apiUrl = urlParams.get('apiUrl') || 'https://renouvellement-ordonnance.vercel.app';
+    const apiToken = urlParams.get('apiToken') || '';
+
+    // Charger les informations du scan
+    async function loadScanInfo() {
+      try {
+        const response = await fetch(`${apiUrl}/api/renewals/scan-info?renewalId=${encodeURIComponent(renewalId)}&type=${encodeURIComponent(type)}`);
+        const data = await response.json();
+
+        if (data.success) {
+          scanData = data;
+          showContent();
+        } else {
+          showError(data.error || 'Erreur lors du chargement');
+        }
+      } catch (error) {
+        showError('Erreur de connexion: ' + error.message);
+      }
+    }
+
+    function showContent() {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+      
+      document.getElementById('patient-name').textContent = 
+        `${scanData.patient.nom.toUpperCase()} ${scanData.patient.prenom}`;
+      document.getElementById('delivery-date').textContent = scanData.dateDelivrance;
+      document.getElementById('renewal-number').textContent = `R${scanData.numeroRenouvellement}`;
+    }
+
+    function showError(message) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error-message').textContent = message;
+    }
+
+    function showSuccess() {
+      document.getElementById('content').style.display = 'none';
+      document.getElementById('success').style.display = 'block';
+      
+      setTimeout(() => {
+        window.close();
+      }, 2000);
+    }
+
+    async function handleConfirm(confirm) {
+      if (!scanData || confirming) return;
+
+      if (!confirm) {
+        window.close();
+        return;
+      }
+
+      confirming = true;
+      document.getElementById('btn-yes').disabled = true;
+      document.getElementById('btn-no').disabled = true;
+      document.getElementById('btn-yes').innerHTML = '<div class="spinner" style="width: 20px; height: 20px; border-width: 2px;"></div><span>Enregistrement...</span>';
+
+      try {
+        // Essayer d'abord avec l'API authentifiée si on a un token
+        let response;
+        if (apiToken) {
+          try {
+            response = await fetch(`${apiUrl}/api/renewals/confirm-delivery`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                renewalId: scanData.renewal.id,
+                type: scanData.renewal.type,
+              }),
+            });
+          } catch (e) {
+            // Si l'API authentifiée échoue, utiliser l'API publique
+            response = null;
+          }
+        }
+
+        // Si pas de token ou si l'API authentifiée a échoué, utiliser l'API publique
+        if (!response || response.status === 401) {
+          response = await fetch(`${apiUrl}/api/renewals/confirm-delivery-public`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              renewalId: scanData.renewal.id,
+              type: scanData.renewal.type,
+              apiToken: apiToken,
+            }),
+          });
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          showSuccess();
+        } else {
+          showError(data.error || 'Erreur lors de la confirmation');
+          confirming = false;
+          document.getElementById('btn-yes').disabled = false;
+          document.getElementById('btn-no').disabled = false;
+          document.getElementById('btn-yes').innerHTML = '<span>✓</span><span>OUI</span>';
+        }
+      } catch (error) {
+        showError('Erreur de connexion: ' + error.message);
+        confirming = false;
+        document.getElementById('btn-yes').disabled = false;
+        document.getElementById('btn-no').disabled = false;
+        document.getElementById('btn-yes').innerHTML = '<span>✓</span><span>OUI</span>';
+      }
+    }
+
+    // Charger les informations au démarrage
+    if (renewalId && type) {
+      loadScanInfo();
+    } else {
+      showError('Paramètres manquants');
+    }
+  </script>
+</body>
+</html>
+
