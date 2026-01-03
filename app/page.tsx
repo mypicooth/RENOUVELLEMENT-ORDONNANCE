@@ -18,6 +18,7 @@ interface RenewalEvent {
   date_sms?: string | null;
   date_delivrance?: string | null;
   prescriptionCycle: {
+    nb_renouvellements: number;
     patient: {
       id: string;
       nom: string;
@@ -155,9 +156,12 @@ export default function HomePage() {
 
   const printQRCode = async (renewal: RenewalEvent) => {
     try {
+      // Vérifier si c'est le dernier renouvellement
+      const isLastRenewal = renewal.index === renewal.prescriptionCycle.nb_renouvellements;
+      
       const qrCodeData = JSON.stringify({
         renewalId: renewal.id,
-        type: "RENEWAL",
+        type: isLastRenewal ? "RENEWAL_END" : "RENEWAL",
       });
 
       // Générer le QR code en image
@@ -234,20 +238,18 @@ export default function HomePage() {
                 font-weight: bold;
                 font-size: 16px;
                 text-transform: uppercase;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
                 line-height: 1.2;
                 margin-bottom: 1mm;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
               }
               .prenom {
                 font-weight: bold;
                 font-size: 16px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
                 line-height: 1.2;
                 margin-bottom: 1mm;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
               }
               .date {
                 font-size: 16px;
@@ -287,6 +289,7 @@ export default function HomePage() {
               <div class="date">${dateText}</div>
               ${dateDelivranceText ? `<div class="date-delivrance">✓ Délivré: ${dateDelivranceText}</div>` : ''}
               <div class="renouvellement">R${renewal.index}</div>
+              ${isLastRenewal ? '<div class="note-derniere" style="font-size: 14px; color: #d32f2f; font-weight: bold; margin-top: 1mm;">⚠️ DERNIÈRE ORDO</div>' : ''}
             </div>
             <script>
               window.onload = function() {
@@ -324,10 +327,13 @@ export default function HomePage() {
       // Créer une page avec les dimensions exactes
       const page = pdfDoc.addPage([widthPt, heightPt]);
       
+      // Vérifier si c'est le dernier renouvellement
+      const isLastRenewal = renewal.index === renewal.prescriptionCycle.nb_renouvellements;
+      
       // Générer le QR code
       const qrCodeData = JSON.stringify({
         renewalId: renewal.id,
-        type: "RENEWAL",
+        type: isLastRenewal ? "RENEWAL_END" : "RENEWAL",
       });
       
       // Utiliser qrcode pour générer le QR code en image
@@ -423,6 +429,19 @@ export default function HomePage() {
         color: rgb(0.3, 0.3, 0.3),
         font: helveticaBold,
       });
+      
+      // Note pour le dernier renouvellement
+      const isLastRenewal = renewal.index === renewal.prescriptionCycle.nb_renouvellements;
+      if (isLastRenewal) {
+        yOffset = yOffset + nomSize * 1.2;
+        page.drawText("⚠️ DERNIÈRE ORDO", {
+          x: textX,
+          y: textY - yOffset,
+          size: baseFontSize * 0.85,
+          color: rgb(0.83, 0.18, 0.18), // #d32f2f
+          font: helveticaBold,
+        });
+      }
       
       // Sauvegarder le PDF
       const pdfBytes = await pdfDoc.save();
@@ -564,6 +583,19 @@ export default function HomePage() {
           color: rgb(0.3, 0.3, 0.3),
           font: helveticaBold,
         });
+        
+        // Note pour le dernier renouvellement
+        const isLastRenewal = renewal.index === renewal.prescriptionCycle.nb_renouvellements;
+        if (isLastRenewal) {
+          yOffset = yOffset + nomSize * 1.2;
+          page.drawText("⚠️ DERNIÈRE ORDO", {
+            x: textX,
+            y: textY - yOffset,
+            size: baseFontSize * 0.85,
+            color: rgb(0.83, 0.18, 0.18), // #d32f2f
+            font: helveticaBold,
+          });
+        }
       }
       
       const pdfBytes = await pdfDoc.save();
