@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "description": "Application en arrière-plan pour scanner les QR codes de renouvellement",
   "main": "scanner.js",
+  "bin": "scanner.js",
   "scripts": {
     "start": "node scanner.js",
+    "build": "node build.js",
+    "create-installer": "node create-installer.js",
     "install-service": "node install-service.js",
     "uninstall-service": "node uninstall-service.js"
   },
@@ -13,7 +16,17 @@
     "clipboardy": "^3.0.0"
   },
   "devDependencies": {
-    "node-windows": "^1.0.0-beta.8"
+    "node-windows": "^1.0.0-beta.8",
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "assets": [
+      "config.json"
+    ],
+    "scripts": [
+      "scanner.js",
+      "scanner-config.js"
+    ]
   },
   "keywords": [
     "barcode",
@@ -21,8 +34,5 @@
     "background"
   ],
   "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "node-windows": "^1.0.0-beta.8"
-  }
+  "license": "ISC"
 }

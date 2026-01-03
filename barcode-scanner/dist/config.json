@@ -1,0 +1,7 @@
+{
+  "API_URL": "https://renouvellement-ordonnance.vercel.app",
+  "SCANNER_API_TOKEN": "",
+  "SCAN_INTERVAL": 100,
+  "MIN_LENGTH": 20
+}
+

@@ -11,14 +11,11 @@
 const axios = require('axios');
 const clipboardy = require('clipboardy');
 const os = require('os');
+const { loadConfig } = require('./scanner-config');
 
-// Configuration
-const CONFIG = {
-  API_URL: process.env.API_URL || 'http://localhost:3000',
-  API_TOKEN: process.env.SCANNER_API_TOKEN || '',
-  SCAN_INTERVAL: 100, // Vérifier le clipboard toutes les 100ms
-  MIN_LENGTH: 20, // Longueur minimale d'un QR code JSON
-};
+// Charger la configuration
+const CONFIG = loadConfig();
+const API_TOKEN = CONFIG.SCANNER_API_TOKEN || '';
 
 let lastClipboardContent = '';
 let isProcessing = false;
@@ -52,12 +49,12 @@ async function sendScanToAPI(renewalId, type) {
     console.log(`[${timestamp}] Scan #${scanCount} détecté: ${type} pour ${renewalId.substring(0, 20)}...`);
     
     // Utiliser l'endpoint public avec token API si disponible
-    const endpoint = CONFIG.API_TOKEN 
+    const endpoint = API_TOKEN 
       ? `${CONFIG.API_URL}/api/renewals/scan-public`
       : `${CONFIG.API_URL}/api/renewals/scan`;
     
-    const payload = CONFIG.API_TOKEN
-      ? { renewalId, type, apiToken: CONFIG.API_TOKEN }
+    const payload = API_TOKEN
+      ? { renewalId, type, apiToken: API_TOKEN }
       : { renewalId, type };
     
     const response = await axios.post(endpoint, payload, {
@@ -136,12 +133,13 @@ function start() {
   console.log('='.repeat(70));
   console.log(`  API URL: ${CONFIG.API_URL}`);
   console.log(`  Intervalle de vérification: ${CONFIG.SCAN_INTERVAL}ms`);
-  if (CONFIG.API_TOKEN) {
-    console.log(`  Token API: ${CONFIG.API_TOKEN.substring(0, 10)}... (configuré)`);
+  if (API_TOKEN) {
+    console.log(`  Token API: ${API_TOKEN.substring(0, 10)}... (configuré)`);
     console.log(`  Mode: Authentifié (scan-public)`);
   } else {
     console.log('  ⚠️  Token API non configuré');
     console.log(`  Mode: Session web requise (scan)`);
+    console.log(`  💡 Configurez le token dans config.json`);
   }
   console.log('');
   console.log('  En écoute... (Appuyez sur Ctrl+C pour arrêter)');
