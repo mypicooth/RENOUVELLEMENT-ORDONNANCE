@@ -179,6 +179,9 @@ export default function HomePage() {
       }
 
       const dateText = format(new Date(renewal.date_theorique), "dd/MM/yyyy", { locale: fr });
+      const dateDelivranceText = renewal.date_delivrance 
+        ? format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })
+        : null;
 
       // Créer le contenu HTML pour l'impression
       printWindow.document.write(`
