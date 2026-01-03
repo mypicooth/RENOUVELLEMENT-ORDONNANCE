@@ -431,7 +431,6 @@ export default function HomePage() {
       });
       
       // Note pour le dernier renouvellement
-      const isLastRenewal = renewal.index === renewal.prescriptionCycle.nb_renouvellements;
       if (isLastRenewal) {
         yOffset = yOffset + nomSize * 1.2;
         page.drawText("⚠️ DERNIÈRE ORDO", {
@@ -495,9 +494,12 @@ export default function HomePage() {
       for (const renewal of renewalsToPrint) {
         const page = pdfDoc.addPage([widthPt, heightPt]);
         
+        // Vérifier si c'est le dernier renouvellement
+        const isLastRenewal = renewal.index === renewal.prescriptionCycle.nb_renouvellements;
+        
         const qrCodeData = JSON.stringify({
           renewalId: renewal.id,
-          type: "RENEWAL",
+          type: isLastRenewal ? "RENEWAL_END" : "RENEWAL",
         });
         
         const qrCodeDataUrl = await QRCodeLib.default.toDataURL(qrCodeData, {
@@ -585,7 +587,6 @@ export default function HomePage() {
         });
         
         // Note pour le dernier renouvellement
-        const isLastRenewal = renewal.index === renewal.prescriptionCycle.nb_renouvellements;
         if (isLastRenewal) {
           yOffset = yOffset + nomSize * 1.2;
           page.drawText("⚠️ DERNIÈRE ORDO", {
