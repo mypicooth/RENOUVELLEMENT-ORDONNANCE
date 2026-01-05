@@ -121,3 +121,4 @@ sc delete RenouvellementQRScanner
 - Les logs sont dans l'Observateur d'événements Windows
 
 
+

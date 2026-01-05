@@ -78,3 +78,4 @@ writeStartupLog(`Working directory: ${process.cwd()}`);
 module.exports = { writeStartupLog, startupLogFile };
 
 
+

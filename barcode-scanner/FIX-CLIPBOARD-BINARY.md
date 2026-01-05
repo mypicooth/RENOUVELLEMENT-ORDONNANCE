@@ -41,3 +41,4 @@ Les logs devraient maintenant montrer :
 - `✅ Clipboard lu avec succès` au lieu de `⚠️ Erreur lecture clipboard`
 
 
+

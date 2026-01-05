@@ -22,3 +22,4 @@ cd C:\Users\abbas\Desktop\RENOUVELLEMENT-ORDONNANCE\barcode-scanner; Set-Executi
 
 
 
+

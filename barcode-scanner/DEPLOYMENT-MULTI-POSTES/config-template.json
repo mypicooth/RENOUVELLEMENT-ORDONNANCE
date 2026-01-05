@@ -1,0 +1,30 @@
+# Configuration du Scanner de QR Codes
+# 
+# Ce fichier contient la configuration de l'application
+# Modifiez les valeurs selon vos besoins
+
+{
+  # URL de l'API de l'application web
+  "API_URL": "https://renouvellement-ordonnance.vercel.app",
+  
+  # Token d'authentification pour l'API (NE PAS PARTAGER)
+  "SCANNER_API_TOKEN": "VOTRE_TOKEN_ICI",
+  
+  # Intervalle de scan en millisecondes (50ms par défaut)
+  "SCAN_INTERVAL": 50,
+  
+  # Longueur minimale pour détecter un scan (20 caractères par défaut)
+  "MIN_LENGTH": 20
+}
+
+# Instructions de configuration:
+# 
+# 1. Remplacez "VOTRE_TOKEN_ICI" par votre vrai token API
+# 2. Modifiez l'URL si vous utilisez un autre domaine
+# 3. Sauvegardez ce fichier
+# 4. Redémarrez le scanner ou le service
+#
+# Pour obtenir un token API:
+# - Connectez-vous à l'application web en tant qu'administrateur
+# - Accédez aux paramètres du scanner
+# - Générez un nouveau token

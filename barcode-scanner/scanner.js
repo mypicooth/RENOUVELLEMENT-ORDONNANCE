@@ -53,7 +53,7 @@ try {
 }
 
 // Charger les autres modules avec gestion d'erreurs
-let axios, os, loadConfig, child_process, readline;
+let axios, os, loadConfig, child_process, readline, clipboardy;
 try {
   if (startupLogger) startupLogger.writeStartupLog('Chargement des modules...');
   axios = require('axios');
@@ -71,6 +71,19 @@ try {
   const scannerConfig = require('./scanner-config');
   loadConfig = scannerConfig.loadConfig;
   if (startupLogger) startupLogger.writeStartupLog('  ✓ scanner-config chargé');
+  // Charger le module de presse-papiers pour la surveillance
+  try {
+    clipboardy = require('clipboardy');
+    if (startupLogger) startupLogger.writeStartupLog('  ✓ clipboardy chargé');
+    logger.info('✅ Module clipboardy chargé avec succès');
+  } catch (e) {
+    const errorMsg = `⚠️  Impossible de charger clipboardy: ${e.message}`;
+    if (startupLogger) startupLogger.writeStartupLog(`  ✗ clipboardy: ${e.message}`);
+    logger.warn(errorMsg);
+    logger.warn(`   Stack: ${e.stack}`);
+    logger.warn(`   Utilisation de stdin uniquement (nécessite le focus)`);
+    clipboardy = null;
+  }
   logger.info('Modules chargés avec succès');
   if (startupLogger) startupLogger.writeStartupLog('Tous les modules chargés avec succès');
 } catch (error) {
@@ -129,6 +142,24 @@ function parseQRCode(content) {
     cleaned = cleaned.replace(/\r\n/g, ' ').replace(/\n/g, ' ').replace(/\r/g, ' ');
     // Enlever les espaces multiples sauf dans les strings JSON
     cleaned = cleaned.replace(/\s+/g, ' ').trim();
+    
+    // Extraire le JSON en cherchant le premier " et le dernier " avant les caractères parasites
+    // Format attendu: "renewalId":"...","type":"..."
+    const jsonMatch = cleaned.match(/"renewalId"[^}]*"[^"]*"/);
+    if (jsonMatch) {
+      cleaned = jsonMatch[0];
+      logger.debug(`JSON extrait du buffer: ${cleaned.substring(0, 100)}`);
+    }
+    
+    // Ajouter les accolades si elles manquent (certains scanners ne les transmettent pas)
+    if (cleaned.startsWith('"') && !cleaned.startsWith('{')) {
+      logger.debug(`Ajout de l'accolade ouvrante { au début`);
+      cleaned = '{' + cleaned;
+    }
+    if (cleaned.endsWith('"') && !cleaned.endsWith('}')) {
+      logger.debug(`Ajout de l'accolade fermante } à la fin`);
+      cleaned = cleaned + '}';
+    }
     
     logger.info(`Tentative de parsing JSON (${cleaned.length} caractères): ${cleaned.substring(0, 150)}...`);
     
@@ -349,6 +380,9 @@ function openScanPage(renewalId, type) {
 let keyboardBuffer = '';
 let keyboardTimeout = null;
 const KEYBOARD_TIMEOUT = 100; // 100ms de pause = fin du scan
+let clipboardMonitor = null; // Intervalle de surveillance du presse-papiers
+let lastClipboardContent = ''; // Dernier contenu du presse-papiers
+let keyboardHookProcess = null; // Processus PowerShell pour le hook clavier global
 
 /**
  * Traite le contenu capturé depuis le clavier
@@ -404,11 +438,157 @@ function processKeyboardInput(content) {
 
 /**
  * Initialise l'écoute du clavier (mode HID)
- * Note: Nécessite que l'application ait le focus pour fonctionner
- * Les scanners HID envoient les données comme un clavier, donc l'application doit être active
+ * Utilise la surveillance du presse-papiers pour fonctionner même si la fenêtre est minimisée
+ * Beaucoup de scanners de code-barres copient automatiquement dans le presse-papiers
+ * Fallback vers stdin si le presse-papiers n'est pas disponible (nécessite le focus)
  */
 function setupKeyboardListener() {
   try {
+    // TOUJOURS activer la surveillance du presse-papiers en premier (fonctionne même sans focus)
+    // Beaucoup de scanners de code-barres copient automatiquement dans le presse-papiers
+    logger.info(`📋 Tentative d'activation de la surveillance du presse-papiers...`);
+    
+    if (clipboardy) {
+      try {
+        logger.info(`📋 Surveillance du presse-papiers activée`);
+        logger.info(`   ✅ Fonctionne même si la fenêtre est minimisée`);
+        logger.info(`   💡 Assurez-vous que votre scanner copie dans le presse-papiers`);
+        
+        // Lire le contenu initial du presse-papiers
+        try {
+          lastClipboardContent = clipboardy.readSync();
+          logger.info(`   📋 Contenu initial du presse-papiers lu (${lastClipboardContent.length} caractères)`);
+        } catch (e) {
+          lastClipboardContent = '';
+          logger.warn(`   ⚠️  Impossible de lire le contenu initial: ${e.message}`);
+        }
+        
+        // Surveiller le presse-papiers toutes les 50ms (plus fréquent pour une meilleure réactivité)
+        clipboardMonitor = setInterval(() => {
+          try {
+            const currentContent = clipboardy.readSync();
+            
+            // Si le contenu a changé et est assez long, c'est probablement un scan
+            if (currentContent !== lastClipboardContent && 
+                currentContent.length >= CONFIG.MIN_LENGTH) {
+              
+              logger.debug(`📋 Changement détecté dans le presse-papiers (${currentContent.length} caractères)`);
+              
+              // Vérifier si c'est un JSON valide (QR code de renouvellement)
+              const trimmedContent = currentContent.trim();
+              const lowerContent = trimmedContent.toLowerCase();
+              const hasRenewalId = lowerContent.includes('renewalid') || 
+                                  trimmedContent.includes('renewalId') || 
+                                  trimmedContent.includes('"renewalId"');
+              const hasType = lowerContent.includes('"type"') || 
+                             lowerContent.includes('"renewal"') || 
+                             lowerContent.includes('"renewal_end"');
+              const hasJsonStart = trimmedContent.includes('{');
+              
+              if (hasRenewalId || (hasJsonStart && hasType)) {
+                logger.info(`📋 ✅ Nouveau QR code détecté dans le presse-papiers (${currentContent.length} caractères)`);
+                processKeyboardInput(trimmedContent);
+              } else {
+                logger.debug(`📋 Contenu détecté mais ne correspond pas à un QR code de renouvellement`);
+              }
+              
+              lastClipboardContent = currentContent;
+            }
+          } catch (e) {
+            // Ignorer les erreurs de lecture du presse-papiers silencieusement
+            // (peut arriver si le presse-papiers contient des données non-textuelles)
+          }
+        }, 50); // Vérifier toutes les 50ms pour une meilleure réactivité
+        
+        logger.info(`✅ Surveillance du presse-papiers configurée (vérification toutes les 50ms)`);
+        // Continuer aussi avec stdin pour les scanners qui n'utilisent pas le presse-papiers
+      } catch (clipboardError) {
+        logger.error(`❌ Erreur configuration surveillance presse-papiers: ${clipboardError.message}`);
+        logger.error(`   Stack: ${clipboardError.stack}`);
+        logger.warn(`   Fallback vers stdin...`);
+        // Continuer avec le fallback stdin
+      }
+    } else {
+      logger.warn(`⚠️  clipboardy n'est pas disponible`);
+      logger.info(`   Tentative d'utilisation de PowerShell pour la surveillance du presse-papiers...`);
+      
+      // Fallback: utiliser un hook clavier global Windows via PowerShell
+      // Ce hook capture les événements clavier au niveau système, même si l'application est minimisée
+      try {
+        const exeDir = process.pkg ? path.dirname(process.execPath) : __dirname;
+        const psScriptPath = path.join(exeDir, 'keyboard-hook.ps1');
+        
+        logger.info(`   🔧 Utilisation du hook clavier global Windows`);
+        logger.info(`   📍 Script: ${psScriptPath}`);
+        
+        // Lancer PowerShell avec le hook clavier global
+        const psProcess = child_process.spawn('powershell', ['-NoProfile', '-WindowStyle', 'Hidden', '-File', psScriptPath], {
+          stdio: ['ignore', 'pipe', 'pipe'],
+          windowsHide: true,
+          cwd: exeDir
+        });
+        
+        let psBuffer = '';
+        psProcess.stdout.on('data', (data) => {
+          psBuffer += data.toString();
+          const lines = psBuffer.split(/\r?\n/);
+          psBuffer = lines.pop() || '';
+          
+          lines.forEach(line => {
+            const trimmed = line.trim();
+            if (trimmed.length >= CONFIG.MIN_LENGTH) {
+              // Vérifier que ce n'est pas un log (commence par [timestamp])
+              if (!trimmed.match(/^\[\d{4}-\d{2}-\d{2}T/)) {
+                logger.info(`⌨️  Contenu détecté via hook clavier global (${trimmed.length} caractères): ${trimmed.substring(0, 100)}...`);
+                processKeyboardInput(trimmed);
+              } else {
+                logger.debug(`📋 Contenu ignoré (ressemble à un log)`);
+              }
+            }
+          });
+        });
+        
+        psProcess.stderr.on('data', (data) => {
+          const error = data.toString();
+          if (error.trim()) {
+            // Filtrer les messages de débogage (commencent par [keyboard-hook])
+            if (error.trim().startsWith('[keyboard-hook]')) {
+              logger.debug(`🔧 Hook clavier: ${error.trim()}`);
+            } else {
+              logger.warn(`⚠️  Erreur hook clavier PowerShell: ${error.trim()}`);
+            }
+          }
+        });
+        
+        psProcess.on('exit', (code) => {
+          if (code !== 0 && code !== null) {
+            logger.warn(`⚠️  Processus PowerShell terminé (code: ${code})`);
+            logger.warn(`   Le hook clavier global n'est plus actif`);
+            logger.warn(`   Fallback vers stdin (nécessite le focus)`);
+          } else if (code === 0) {
+            logger.warn(`⚠️  Processus PowerShell terminé normalement (code: 0)`);
+            logger.warn(`   Le hook clavier global n'est plus actif`);
+          }
+        });
+        
+        psProcess.on('error', (error) => {
+          logger.error(`❌ Erreur processus PowerShell: ${error.message}`);
+          logger.warn(`   Fallback vers stdin (nécessite le focus)`);
+        });
+        
+        // Stocker la référence au processus pour le nettoyage
+        keyboardHookProcess = psProcess;
+        
+        logger.info(`✅ Hook clavier global Windows activé`);
+        logger.info(`   ✅ Fonctionne même si la fenêtre est minimisée`);
+        logger.info(`   ✅ Capture les événements clavier au niveau système`);
+      } catch (psError) {
+        logger.error(`❌ Erreur configuration PowerShell: ${psError.message}`);
+        logger.warn(`   Utilisation de stdin uniquement (nécessite le focus)`);
+      }
+    }
+    
+    // Fallback: utiliser stdin (nécessite le focus)
     let stdinConfigured = false;
     
     if (process.stdin.isTTY) {
@@ -417,7 +597,7 @@ function setupKeyboardListener() {
         process.stdin.resume();
         process.stdin.setEncoding('utf8');
         stdinConfigured = true;
-        logger.info(`⌨️  Écoute du clavier activée (mode HID - TTY)`);
+        logger.info(`⌨️  Écoute du clavier activée (mode HID - TTY - fallback)`);
         logger.info(`   ⚠️  Important: L'application doit avoir le focus pour détecter les scans`);
       } catch (e) {
         logger.warn(`⚠️  Impossible de configurer stdin en mode raw: ${e.message}`);
@@ -428,7 +608,7 @@ function setupKeyboardListener() {
         process.stdin.resume();
         process.stdin.setEncoding('utf8');
         stdinConfigured = true;
-        logger.info(`⌨️  Écoute du clavier activée (mode HID - non-TTY)`);
+        logger.info(`⌨️  Écoute du clavier activée (mode HID - non-TTY - fallback)`);
         logger.info(`   ⚠️  Important: L'application doit avoir le focus pour détecter les scans`);
       } catch (e) {
         logger.warn(`⚠️  Impossible de configurer stdin: ${e.message}`);
@@ -476,11 +656,11 @@ function setupKeyboardListener() {
         logger.warn(`⚠️  Erreur stdin: ${error.message}`);
       });
       
-      logger.info(`✅ Écoute du clavier configurée`);
+      logger.info(`✅ Écoute du clavier configurée (fallback stdin)`);
     } else {
       logger.warn(`⚠️  Écoute du clavier désactivée (stdin n'est pas disponible)`);
       logger.error(`❌ Le scanner ne peut pas fonctionner sans accès au clavier`);
-      logger.error(`   Veuillez exécuter le scanner dans un environnement avec accès stdin`);
+      logger.error(`   Veuillez installer node-global-key-listener ou exécuter le scanner dans un environnement avec accès stdin`);
     }
   } catch (error) {
     logger.error(`❌ Erreur configuration écoute clavier: ${error.message}`);
@@ -586,11 +766,31 @@ function start() {
     logger.info('='.repeat(70));
     logger.info(`  Arrêt du scanner (${scanCount} scan(s) traité(s))`);
     logger.info('='.repeat(70));
+    // Arrêter la surveillance du presse-papiers si active
+    if (clipboardMonitor) {
+      try {
+        clearInterval(clipboardMonitor);
+        clipboardMonitor = null;
+        logger.info('Surveillance du presse-papiers arrêtée');
+      } catch (e) {
+        // Ignorer les erreurs de nettoyage
+      }
+    }
     process.exit(0);
   });
 
   process.on('SIGTERM', () => {
     logger.info(`Arrêt du scanner (${scanCount} scan(s) traité(s))`);
+    // Arrêter la surveillance du presse-papiers si active
+    if (clipboardMonitor) {
+      try {
+        clearInterval(clipboardMonitor);
+        clipboardMonitor = null;
+        logger.info('Surveillance du presse-papiers arrêtée');
+      } catch (e) {
+        // Ignorer les erreurs de nettoyage
+      }
+    }
     process.exit(0);
   });
 }

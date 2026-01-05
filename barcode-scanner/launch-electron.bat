@@ -14,3 +14,4 @@ if not exist "%ELECTRON_PATH%" (
 node "%ELECTRON_PATH%" "%APP_PATH" %*
 
 
+

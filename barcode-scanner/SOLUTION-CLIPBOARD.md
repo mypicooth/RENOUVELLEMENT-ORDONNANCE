@@ -66,3 +66,4 @@ Pour vérifier que l'application détecte le presse-papiers :
 Si vous ne voyez pas ces messages, l'application ne peut toujours pas accéder au presse-papiers.
 
 
+

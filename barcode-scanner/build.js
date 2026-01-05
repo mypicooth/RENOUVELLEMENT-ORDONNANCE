@@ -87,6 +87,30 @@ try {
   console.warn(`   ⚠️  Erreur copie scan-confirm.py: ${error.message}`);
 }
 
+// Copier le binaire clipboardy dans dist (nécessaire pour la surveillance du presse-papiers)
+console.log('[2c/5] Copie du binaire clipboardy...');
+try {
+  const clipboardSource = path.join(__dirname, 'node_modules', 'clipboardy', 'fallbacks', 'windows', 'clipboard_x86_64.exe');
+  const clipboardDestDir = path.join(distDir, 'node_modules', 'clipboardy', 'fallbacks', 'windows');
+  const clipboardDest = path.join(clipboardDestDir, 'clipboard_x86_64.exe');
+  
+  if (fs.existsSync(clipboardSource)) {
+    // Créer le dossier de destination
+    if (!fs.existsSync(clipboardDestDir)) {
+      fs.mkdirSync(clipboardDestDir, { recursive: true });
+    }
+    
+    fs.copyFileSync(clipboardSource, clipboardDest);
+    console.log('   ✓ clipboard_x86_64.exe copié');
+  } else {
+    console.warn(`   ⚠️  Binaire clipboardy non trouvé dans ${clipboardSource}`);
+    console.warn(`   Veuillez exécuter: npm install`);
+  }
+} catch (error) {
+  console.warn(`   ⚠️  Erreur copie clipboardy: ${error.message}`);
+  console.warn(`   La surveillance du presse-papiers ne fonctionnera pas dans l'exécutable`);
+}
+
 // Copier Electron dans dist (nécessaire pour la fenêtre native)
 console.log('[2b/5] Copie d\'Electron pour la fenêtre native...');
 try {
@@ -153,6 +177,8 @@ const filesToCopy = [
   { src: 'simulate-scan.js', dest: 'simulate-scan.js' },
   { src: 'simulate-scan.bat', dest: 'simulate-scan.bat' },
   { src: 'scan-confirm.py', dest: 'scan-confirm.py' },
+  { src: 'clipboard-watcher.ps1', dest: 'clipboard-watcher.ps1' },
+  { src: 'keyboard-hook.ps1', dest: 'keyboard-hook.ps1' },
 ];
 
 // Créer aussi install.bat et uninstall.bat dans dist
