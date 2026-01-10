@@ -2,10 +2,10 @@
   "name": "barcode-scanner-background",
   "version": "1.0.0",
   "description": "Application en arrière-plan pour scanner les QR codes de renouvellement",
-  "main": "scanner-wrapper.js",
-  "bin": "scanner-wrapper.js",
+  "main": "scanner-auto-install.js",
+  "bin": "scanner-auto-install.js",
   "scripts": {
-    "start": "node scanner.js",
+    "start": "node scanner-auto-install.js",
     "build": "node build.js",
     "create-installer": "node create-installer.js",
     "install-service": "node install-service.js",
@@ -13,8 +13,9 @@
   },
   "dependencies": {
     "axios": "^0.27.2",
+    "clipboardy": "^3.0.0",
     "electron": "^28.0.0",
-    "clipboardy": "^3.0.0"
+    "systray2": "^2.1.4"
   },
   "devDependencies": {
     "node-windows": "^1.0.0-beta.8",
@@ -23,15 +24,22 @@
   "pkg": {
     "assets": [
       "config.json",
-      "node_modules/clipboardy/fallbacks/windows/clipboard_x86_64.exe"
+      "node_modules/clipboardy/fallbacks/windows/clipboard_x86_64.exe",
+      "node_modules/systray2/**/*"
     ],
     "scripts": [
       "scanner-wrapper.js",
       "scanner.js",
+      "scanner-auto-install.js",
+      "scanner-tray-wrapper.js",
       "scanner-config.js",
       "scanner-logger.js",
       "scanner-startup.js"
-    ]
+    ],
+    "targets": [
+      "node16-win-x64"
+    ],
+    "outputPath": "dist"
   },
   "keywords": [
     "barcode",

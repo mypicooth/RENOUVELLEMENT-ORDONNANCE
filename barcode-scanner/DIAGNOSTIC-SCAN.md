@@ -80,3 +80,4 @@ Get-Content logs\scanner-*.log -Wait -Tail 20
 
 
 
+

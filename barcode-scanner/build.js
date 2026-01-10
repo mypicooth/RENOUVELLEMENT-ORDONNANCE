@@ -43,7 +43,7 @@ try {
 }
 
 try {
-  execSync('pkg . --targets node18-win-x64 --output dist/renouvellement-scanner.exe', {
+  execSync('pkg . --targets node18-win-x64 --output dist/renouvellement-scanner.exe --options no-warnings', {
     stdio: 'inherit',
     cwd: __dirname
   });

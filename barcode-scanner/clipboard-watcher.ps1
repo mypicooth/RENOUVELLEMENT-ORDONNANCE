@@ -69,3 +69,4 @@ $watcher.add_ClipboardChanged({
 
 [System.Windows.Forms.Application]::Run($watcher)
 
+

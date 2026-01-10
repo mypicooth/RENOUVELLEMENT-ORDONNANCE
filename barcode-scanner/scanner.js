@@ -201,7 +201,7 @@ function openScanPage(renewalId, type) {
     
     logger.info(`Ouverture de la page de scan: ${scanUrl}`);
     
-    // Essayer d'abord Python (plus léger et rapide), puis Electron en fallback
+    // Essayer d'abord Python (plus léger et rapide), puis navigateur en fallback
     try {
       // En mode compilé (pkg), utiliser le dossier de l'exécutable
       const exeDir = process.pkg ? path.dirname(process.execPath) : __dirname;
@@ -521,8 +521,13 @@ function setupKeyboardListener() {
         logger.info(`   🔧 Utilisation du hook clavier global Windows`);
         logger.info(`   📍 Script: ${psScriptPath}`);
         
-        // Lancer PowerShell avec le hook clavier global
-        const psProcess = child_process.spawn('powershell', ['-NoProfile', '-WindowStyle', 'Hidden', '-File', psScriptPath], {
+        // Lancer PowerShell avec le hook clavier global et -ExecutionPolicy Bypass
+        const psProcess = child_process.spawn('powershell', [
+          '-ExecutionPolicy', 'Bypass',
+          '-NoProfile', 
+          '-WindowStyle', 'Hidden', 
+          '-File', psScriptPath
+        ], {
           stdio: ['ignore', 'pipe', 'pipe'],
           windowsHide: true,
           cwd: exeDir

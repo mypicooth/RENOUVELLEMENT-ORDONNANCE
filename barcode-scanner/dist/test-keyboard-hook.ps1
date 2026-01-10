@@ -42,3 +42,4 @@ try {
 
 Write-Host "`n=== Fin du test ===" -ForegroundColor Cyan
 
+

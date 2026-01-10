@@ -1,0 +1,63 @@
+# CONTENU DU DOSSIER DEPLOYMENT-MULTI-POSTES
+
+## Fichiers nécessaires pour l'installation
+
+### 1. Fichiers principaux (REQUIS)
+- `renouvellement-scanner.exe` (41.7 MB) - Application principale
+- `keyboard-hook.ps1` - Script PowerShell pour capturer le clavier
+- `scan-confirm.py` - Fenêtre de confirmation Python
+- `config.json` - Configuration API (URL et token)
+
+### 2. Scripts d'installation (REQUIS)
+- `INSTALLER.bat` - Installation automatique (À UTILISER)
+- `DESINSTALLER.bat` - Désinstallation propre
+- `TEST-SCANNER.bat` - Tester si le scanner fonctionne
+
+### 3. Documentation
+- `README.txt` - Guide d'installation rapide
+- `INSTALLATION.md` - Instructions détaillées
+- `INSTALLATION-PYTHON.md` - Installation de Python
+- `LISEZ-MOI.md` - Informations générales
+
+### 4. Dossier
+- `logs/` - Dossier pour les fichiers de log (créé automatiquement)
+
+### 5. Fichiers optionnels (pour développeurs)
+- `install-task.bat` - Installation manuelle de la tâche
+- `uninstall-task.bat` - Désinstallation manuelle
+- `config-template.json` - Template de configuration
+
+### 6. Anciens fichiers (NE PAS UTILISER)
+- `install-service.bat.OLD` - Ancienne version service Windows
+- `install-service.ps1.OLD` - Ancienne version PowerShell
+- `DESINSTALLER.ps1` - Ancienne version désinstallation
+
+
+## POUR DÉPLOYER SUR UN NOUVEAU POSTE
+
+**Copiez ces fichiers essentiels:**
+```
+DEPLOYMENT-MULTI-POSTES/
+├── renouvellement-scanner.exe
+├── keyboard-hook.ps1
+├── scan-confirm.py
+├── config.json
+├── INSTALLER.bat
+├── DESINSTALLER.bat
+├── TEST-SCANNER.bat
+└── README.txt
+```
+
+**Installation:**
+1. Installer Python 3.10+ avec pip
+2. Installer: `pip install requests`
+3. Clic droit sur `INSTALLER.bat` → Exécuter en tant qu'administrateur
+4. Le scanner démarre automatiquement à chaque connexion
+
+
+## SYSTEM TRAY (Icône dans la barre des tâches)
+
+Actuellement, le scanner tourne en arrière-plan **sans icône visible**.
+
+Pour ajouter une icône dans le system tray, il faudrait modifier le code source.
+Voulez-vous que j'ajoute cette fonctionnalité ?
