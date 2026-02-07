@@ -32,23 +32,38 @@ model User {
   @@map("users")
 }
 
-model Patient {
-  id                  String   @id @default(cuid())
-  nom                 String
-  prenom              String
-  telephone_normalise String
-  date_recrutement    DateTime @default(now())
-  consentement        Boolean  @default(false)
-  notes               String?
-  actif               Boolean  @default(true)
-  registered_by       String?  // Opérateur qui a enregistré le patient
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+// Liste des opérateurs (prénom uniquement) — pas de compte, connexion partagée
+model Operator {
+  id        String   @id @default(cuid())
+  prenom    String
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now())
 
-  cycles           PrescriptionCycle[]
-  consents         PatientConsent[]
-  billingReminders BillingReminder[]
-  registeredBy    User?           @relation("RegisteredBy", fields: [registered_by], references: [id])
+  patientsRegistered Patient[]      @relation("RegisteredOperator")
+  renewalsCompleted  RenewalEvent[] @relation("CompletedByOperator")
+
+  @@map("operators")
+}
+
+model Patient {
+  id                     String   @id @default(cuid())
+  nom                    String
+  prenom                 String
+  telephone_normalise    String
+  date_recrutement       DateTime @default(now())
+  consentement          Boolean  @default(false)
+  notes                  String?
+  actif                  Boolean  @default(true)
+  registered_by          String?  // User (compte partagé) — rétrocompat
+  registered_operator_id String?   // Opérateur (prénom) qui a enregistré le patient
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  cycles            PrescriptionCycle[]
+  consents          PatientConsent[]
+  billingReminders  BillingReminder[]
+  registeredBy      User?      @relation("RegisteredBy", fields: [registered_by], references: [id])
+  registeredOperator Operator? @relation("RegisteredOperator", fields: [registered_operator_id], references: [id])
 
   @@map("patients")
 }
@@ -81,19 +96,22 @@ model RenewalEvent {
   date_preparation      DateTime?
   date_sms              DateTime?
   date_termine          DateTime?
-  date_delivrance       DateTime? // Date de récupération du médicament (enregistrée lors du scan QR code)
-  completed_by          String?   // Opérateur qui a enregistré le scan (pour stats / prime)
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  date_delivrance        DateTime? // Date de récupération du médicament (enregistrée lors du scan QR code)
+  completed_by           String?   // User — rétrocompat
+  completed_operator_id  String?   // Opérateur (prénom) qui a scanné — pour stats / prime
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   prescriptionCycle PrescriptionCycle @relation(fields: [prescription_cycle_id], references: [id])
   smsLogs           SmsLog[]
-  completedBy      User?           @relation("CompletedBy", fields: [completed_by], references: [id])
+  completedBy      User?     @relation("CompletedBy", fields: [completed_by], references: [id])
+  completedOperator Operator? @relation("CompletedByOperator", fields: [completed_operator_id], references: [id])
 
   @@unique([prescription_cycle_id, index])
   @@index([date_theorique])
   @@index([statut])
   @@index([completed_by])
+  @@index([completed_operator_id])
   @@index([date_termine])
   @@map("renewal_events")
 }

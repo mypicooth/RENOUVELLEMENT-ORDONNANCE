@@ -12,7 +12,6 @@ import { fr } from "date-fns/locale";
 interface OperatorOption {
   id: string;
   label: string;
-  email: string;
 }
 
 export default function NewPatientPage() {
@@ -45,9 +44,9 @@ export default function NewPatientPage() {
   }>>([]);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
 
-  // Charger la liste des opérateurs
+  // Charger la liste des opérateurs (prénoms uniquement)
   useEffect(() => {
-    fetch("/api/users")
+    fetch("/api/operators")
       .then((res) => res.ok ? res.json() : [])
       .then(setOperators)
       .catch(() => setOperators([]));
@@ -293,7 +292,7 @@ export default function NewPatientPage() {
                   }
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="">— Choisir un opérateur —</option>
+                  <option value="">— Choisir votre prénom —</option>
                   {operators.map((op) => (
                     <option key={op.id} value={op.id}>
                       {op.label}
@@ -301,7 +300,7 @@ export default function NewPatientPage() {
                   ))}
                 </select>
                 <p className="mt-1 text-xs text-gray-500">
-                  Nom de l&apos;employé qui enregistre le nouveau patient (pour suivi et primes).
+                  Indiquez qui enregistre ce patient (pour suivi et primes).
                 </p>
               </div>
 

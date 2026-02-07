@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { renewalId, type } = body;
+    const { renewalId, type, operatorId } = body;
 
     if (!renewalId || !type) {
       return NextResponse.json(
@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
         statut: "TERMINE",
         date_termine: today,
         completed_by: session.user.id,
+        completed_operator_id: operatorId || null,
       },
     });
 

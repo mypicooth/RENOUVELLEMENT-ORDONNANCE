@@ -22,14 +22,28 @@ interface ScanInfo {
   numeroRenouvellement: number;
 }
 
+interface OperatorOption {
+  id: string;
+  label: string;
+}
+
 function ScanPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [scanInfo, setScanInfo] = useState<ScanInfo | null>(null);
+  const [operators, setOperators] = useState<OperatorOption[]>([]);
+  const [operatorId, setOperatorId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/operators")
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setOperators)
+      .catch(() => setOperators([]));
+  }, []);
 
   useEffect(() => {
     const renewalId = searchParams.get("renewalId");
@@ -84,6 +98,7 @@ function ScanPageContent() {
         body: JSON.stringify({
           renewalId: scanInfo.renewal.id,
           type: scanInfo.renewal.type,
+          operatorId: operatorId || undefined,
         }),
       });
 
@@ -209,6 +224,26 @@ function ScanPageContent() {
               R{scanInfo.numeroRenouvellement}
             </p>
           </div>
+
+          {operators.length > 0 && (
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <label className="block text-sm font-semibold text-gray-600 mb-1">
+                QUI EFFECTUE CETTE DÉLIVRANCE ?
+              </label>
+              <select
+                value={operatorId}
+                onChange={(e) => setOperatorId(e.target.value)}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">— Choisir votre prénom —</option>
+                {operators.map((op) => (
+                  <option key={op.id} value={op.id}>
+                    {op.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="mb-6">

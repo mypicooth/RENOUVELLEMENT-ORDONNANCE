@@ -3,10 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@/lib/types";
-import { createUser } from "@/lib/auth";
 
 /**
- * Liste des utilisateurs (opérateurs et admins). Réservé au SUPERADMIN.
+ * Liste des opérateurs (prénom uniquement). Réservé au SUPERADMIN.
+ * Les opérateurs n'ont pas de compte : tout le monde se connecte avec le même compte et choisit son prénom à l'enregistrement du patient.
  */
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -17,24 +17,21 @@ export async function GET() {
     return NextResponse.json({ error: "Accès réservé au superadmin" }, { status: 403 });
   }
 
-  const users = await prisma.user.findMany({
-    orderBy: [{ nom: "asc" }, { prenom: "asc" }],
+  const operators = await prisma.operator.findMany({
+    orderBy: { prenom: "asc" },
     select: {
       id: true,
-      email: true,
-      nom: true,
       prenom: true,
-      role: true,
       actif: true,
       createdAt: true,
     },
   });
 
-  return NextResponse.json(users);
+  return NextResponse.json(operators);
 }
 
 /**
- * Créer un opérateur (compte STAFF). Réservé au SUPERADMIN.
+ * Créer un opérateur (prénom uniquement). Réservé au SUPERADMIN.
  */
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -47,53 +44,28 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { email, password, nom, prenom } = body;
+    const prenom = body.prenom?.trim();
 
-    if (!email || !password) {
+    if (!prenom) {
       return NextResponse.json(
-        { error: "Email et mot de passe requis" },
+        { error: "Le prénom est requis" },
         { status: 400 }
       );
     }
 
-    const emailTrim = String(email).trim().toLowerCase();
-    if (password.length < 6) {
-      return NextResponse.json(
-        { error: "Le mot de passe doit contenir au moins 6 caractères" },
-        { status: 400 }
-      );
-    }
-
-    const existing = await prisma.user.findUnique({
-      where: { email: emailTrim },
+    const operator = await prisma.operator.create({
+      data: { prenom },
     });
-    if (existing) {
-      return NextResponse.json(
-        { error: "Un compte avec cet email existe déjà" },
-        { status: 400 }
-      );
-    }
-
-    const user = await createUser(
-      emailTrim,
-      password,
-      UserRole.STAFF,
-      nom?.trim() || null,
-      prenom?.trim() || null
-    );
 
     return NextResponse.json({
-      id: user.id,
-      email: user.email,
-      nom: user.nom,
-      prenom: user.prenom,
-      role: user.role,
-      actif: user.actif,
+      id: operator.id,
+      prenom: operator.prenom,
+      actif: operator.actif,
     });
   } catch (error) {
     console.error("Erreur création opérateur:", error);
     return NextResponse.json(
-      { error: "Erreur lors de la création du compte" },
+      { error: "Erreur lors de la création" },
       { status: 500 }
     );
   }

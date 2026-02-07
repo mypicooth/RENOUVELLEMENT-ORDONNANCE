@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     end = endOfMonth(now);
   }
 
-  // Renouvellements terminés dans la période, avec l'opérateur qui a scanné
+  // Renouvellements terminés dans la période, avec l'opérateur (prénom) qui a scanné
   const renewals = await prisma.renewalEvent.findMany({
     where: {
       statut: "TERMINE",
@@ -50,34 +50,26 @@ export async function GET(request: NextRequest) {
       },
     },
     select: {
-      completed_by: true,
-      completedBy: {
-        select: {
-          id: true,
-          nom: true,
-          prenom: true,
-          email: true,
-        },
+      completed_operator_id: true,
+      completedOperator: {
+        select: { id: true, prenom: true },
       },
     },
   });
 
-  // Grouper par opérateur
+  // Grouper par opérateur (prénom)
   const byOperator = new Map<
     string,
     { userId: string; name: string; email: string; count: number }
   >();
 
   for (const r of renewals) {
-    const key = r.completed_by ?? "__non_attribue__";
-    const name = r.completedBy
-      ? [r.completedBy.prenom, r.completedBy.nom].filter(Boolean).join(" ") || r.completedBy.email
-      : "Non attribué";
-    const email = r.completedBy?.email ?? "";
-    const userId = r.completed_by ?? "";
+    const key = r.completed_operator_id ?? "__non_attribue__";
+    const name = r.completedOperator?.prenom ?? "Non attribué";
+    const userId = r.completed_operator_id ?? "";
 
     if (!byOperator.has(key)) {
-      byOperator.set(key, { userId, name, email, count: 0 });
+      byOperator.set(key, { userId, name, email: "", count: 0 });
     }
     byOperator.get(key)!.count += 1;
   }

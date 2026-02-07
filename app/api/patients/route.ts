@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { normalizePhone } from "@/lib/phone";
 import { createPrescriptionCycle } from "@/lib/prescription";
 
@@ -75,11 +76,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Opérateur obligatoire : celui qui enregistre le nouveau patient
-    const operatorId = operateur_id || session.user.id;
+    // Opérateur obligatoire (liste prénoms) : choisi au moment de l'enregistrement du patient
+    const operatorId = operateur_id;
     if (!operatorId) {
       return NextResponse.json(
-        { error: "Opérateur obligatoire pour enregistrer un nouveau patient" },
+        { error: "Veuillez sélectionner l'opérateur qui enregistre ce patient" },
         { status: 400 }
       );
     }
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
         },
       });
     } else {
-      // Créer un nouveau patient (registered_by = opérateur pour suivi / primes)
+      // Créer un nouveau patient (opérateur = prénom choisi dans la liste)
       patient = await prisma.patient.create({
         data: {
           nom,
@@ -152,8 +153,8 @@ export async function POST(request: NextRequest) {
           telephone_normalise: phoneNormalized,
           consentement,
           notes,
-          registered_by: operatorId,
-        },
+          ...(operatorId && { registered_operator_id: operatorId }),
+        } as Prisma.PatientUncheckedCreateInput,
       });
     }
 
@@ -175,7 +176,7 @@ export async function POST(request: NextRequest) {
         datePremiereDelivrance: new Date(date_premiere_delivrance),
         nbRenouvellements: parseInt(nb_renouvellements),
         intervalleJours: intervalle_jours ? parseInt(intervalle_jours) : 21,
-        createdBy: operatorId,
+        createdBy: session.user.id,
       });
 
       return NextResponse.json({
