@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
 import { normalizePhone } from "@/lib/phone";
@@ -9,14 +9,22 @@ import SignatureCanvas from "react-signature-canvas";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
+interface OperatorOption {
+  id: string;
+  label: string;
+  email: string;
+}
+
 export default function NewPatientPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [operators, setOperators] = useState<OperatorOption[]>([]);
   const [formData, setFormData] = useState({
     nom: "",
     prenom: "",
     telephone: "",
+    operateur_id: "",
     consentement: false,
     notes: "",
     date_premiere_delivrance: "",
@@ -36,6 +44,14 @@ export default function NewPatientPage() {
     date_recrutement: string;
   }>>([]);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+
+  // Charger la liste des opérateurs
+  useEffect(() => {
+    fetch("/api/users")
+      .then((res) => res.ok ? res.json() : [])
+      .then(setOperators)
+      .catch(() => setOperators([]));
+  }, []);
 
   // Vérifier les doublons par nom de famille
   const checkDuplicates = useCallback(async (nom: string) => {
@@ -90,6 +106,11 @@ export default function NewPatientPage() {
     }
 
     // Validation
+    if (!formData.operateur_id) {
+      setError("Veuillez sélectionner l'opérateur qui enregistre ce patient.");
+      setLoading(false);
+      return;
+    }
     if (!formData.consentement) {
       setError("Le consentement est obligatoire");
       setLoading(false);
@@ -109,6 +130,7 @@ export default function NewPatientPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          operateur_id: formData.operateur_id || undefined,
           nb_renouvellements: formData.nb_renouvellements
             ? parseInt(formData.nb_renouvellements)
             : undefined,
@@ -257,6 +279,30 @@ export default function NewPatientPage() {
                   }
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Opérateur qui enregistre ce patient *
+                </label>
+                <select
+                  required
+                  value={formData.operateur_id}
+                  onChange={(e) =>
+                    setFormData({ ...formData, operateur_id: e.target.value })
+                  }
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">— Choisir un opérateur —</option>
+                  {operators.map((op) => (
+                    <option key={op.id} value={op.id}>
+                      {op.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Nom de l&apos;employé qui enregistre le nouveau patient (pour suivi et primes).
+                </p>
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-md p-4">

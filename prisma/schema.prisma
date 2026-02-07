@@ -26,6 +26,8 @@ model User {
   createdConsents         PatientConsent[]    @relation("ConsentCreatedBy")
   revokedConsents         PatientConsent[]    @relation("ConsentRevokedBy")
   createdBillingReminders BillingReminder[]   @relation("BillingReminderCreatedBy")
+  registeredPatients      Patient[]           @relation("RegisteredBy")
+  completedRenewals       RenewalEvent[]      @relation("CompletedBy")
 
   @@map("users")
 }
@@ -39,12 +41,14 @@ model Patient {
   consentement        Boolean  @default(false)
   notes               String?
   actif               Boolean  @default(true)
+  registered_by       String?  // Opérateur qui a enregistré le patient
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
   cycles           PrescriptionCycle[]
   consents         PatientConsent[]
   billingReminders BillingReminder[]
+  registeredBy    User?           @relation("RegisteredBy", fields: [registered_by], references: [id])
 
   @@map("patients")
 }
@@ -78,15 +82,19 @@ model RenewalEvent {
   date_sms              DateTime?
   date_termine          DateTime?
   date_delivrance       DateTime? // Date de récupération du médicament (enregistrée lors du scan QR code)
+  completed_by          String?   // Opérateur qui a enregistré le scan (pour stats / prime)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
   prescriptionCycle PrescriptionCycle @relation(fields: [prescription_cycle_id], references: [id])
   smsLogs           SmsLog[]
+  completedBy      User?           @relation("CompletedBy", fields: [completed_by], references: [id])
 
   @@unique([prescription_cycle_id, index])
   @@index([date_theorique])
   @@index([statut])
+  @@index([completed_by])
+  @@index([date_termine])
   @@map("renewal_events")
 }
 

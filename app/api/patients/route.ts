@@ -64,12 +64,22 @@ export async function POST(request: NextRequest) {
       date_premiere_delivrance,
       nb_renouvellements,
       intervalle_jours,
+      operateur_id,
     } = body;
 
     // Validation
     if (!nom || !prenom || !telephone) {
       return NextResponse.json(
         { error: "Nom, prénom et téléphone requis" },
+        { status: 400 }
+      );
+    }
+
+    // Opérateur obligatoire : celui qui enregistre le nouveau patient
+    const operatorId = operateur_id || session.user.id;
+    if (!operatorId) {
+      return NextResponse.json(
+        { error: "Opérateur obligatoire pour enregistrer un nouveau patient" },
         { status: 400 }
       );
     }
@@ -134,7 +144,7 @@ export async function POST(request: NextRequest) {
         },
       });
     } else {
-      // Créer un nouveau patient
+      // Créer un nouveau patient (registered_by = opérateur pour suivi / primes)
       patient = await prisma.patient.create({
         data: {
           nom,
@@ -142,6 +152,7 @@ export async function POST(request: NextRequest) {
           telephone_normalise: phoneNormalized,
           consentement,
           notes,
+          registered_by: operatorId,
         },
       });
     }
@@ -164,7 +175,7 @@ export async function POST(request: NextRequest) {
         datePremiereDelivrance: new Date(date_premiere_delivrance),
         nbRenouvellements: parseInt(nb_renouvellements),
         intervalleJours: intervalle_jours ? parseInt(intervalle_jours) : 21,
-        createdBy: session.user.id,
+        createdBy: operatorId,
       });
 
       return NextResponse.json({

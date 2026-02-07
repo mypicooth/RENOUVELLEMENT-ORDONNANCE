@@ -22,6 +22,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     ...(isAdmin
       ? [
           { href: "/admin/dashboard", label: "Dashboard KPI" },
+          { href: "/admin/stats-operateurs", label: "Stats opérateurs" },
           { href: "/admin/templates-sms", label: "Templates SMS" },
           { href: "/admin/import", label: "Import Google Calendar" },
         ]
