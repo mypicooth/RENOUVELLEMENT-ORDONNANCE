@@ -1,6 +1,7 @@
 // Types pour remplacer les enums Prisma (SQLite ne supporte pas les enums)
 
 export const UserRole = {
+  SUPERADMIN: "SUPERADMIN",
   ADMIN: "ADMIN",
   STAFF: "STAFF",
 } as const;

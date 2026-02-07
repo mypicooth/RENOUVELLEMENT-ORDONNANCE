@@ -7,14 +7,33 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Seeding database...");
 
-  // Créer un utilisateur admin par défaut
+  // Créer le compte superadmin (accès stats opérateurs + création des opérateurs)
+  const superAdminEmail = "superadmin@pharmacie.local";
+  const superAdminPassword = await hash("superadmin123", 12);
+  const existingSuperAdmin = await prisma.user.findUnique({
+    where: { email: superAdminEmail },
+  });
+  if (!existingSuperAdmin) {
+    await prisma.user.create({
+      data: {
+        email: superAdminEmail,
+        password: superAdminPassword,
+        role: UserRole.SUPERADMIN,
+        nom: "Superadmin",
+        prenom: "Pharmacie",
+      },
+    });
+    console.log("✅ Compte superadmin créé (superadmin@pharmacie.local / superadmin123)");
+  } else {
+    console.log("ℹ️  Compte superadmin existe déjà");
+  }
+
+  // Créer un utilisateur admin par défaut (pharmacien titulaire, sans accès stats/création opérateurs)
   const adminEmail = "admin@pharmacie.local";
   const adminPassword = await hash("admin123", 12);
-
   const existingAdmin = await prisma.user.findUnique({
     where: { email: adminEmail },
   });
-
   if (!existingAdmin) {
     await prisma.user.create({
       data: {

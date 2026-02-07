@@ -11,7 +11,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isAdmin = session?.user.role === UserRole.ADMIN;
+  const isAdmin = session?.user.role === UserRole.ADMIN || session?.user.role === UserRole.SUPERADMIN;
+  const isSuperAdmin = session?.user.role === UserRole.SUPERADMIN;
 
   const navLinks = [
     { href: "/", label: "Planning du jour" },
@@ -22,7 +23,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     ...(isAdmin
       ? [
           { href: "/admin/dashboard", label: "Dashboard KPI" },
-          { href: "/admin/stats-operateurs", label: "Stats opérateurs" },
+          ...(isSuperAdmin
+            ? [
+                { href: "/admin/stats-operateurs", label: "Stats opérateurs" },
+                { href: "/admin/operateurs", label: "Opérateurs" },
+              ]
+            : []),
           { href: "/admin/templates-sms", label: "Templates SMS" },
           { href: "/admin/import", label: "Import Google Calendar" },
         ]
@@ -73,11 +79,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <div className="text-sm font-medium text-gray-900 truncate">
                 {session?.user.email}
               </div>
-              {isAdmin && (
-                <span className="mt-1 inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
-                  Admin
+              {(session?.user.role === UserRole.SUPERADMIN && (
+                <span className="mt-1 inline-block px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">
+                  Superadmin
                 </span>
-              )}
+              )) ||
+                (isAdmin && (
+                  <span className="mt-1 inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+                    Admin
+                  </span>
+                ))}
             </div>
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
@@ -174,11 +185,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <div className="text-sm font-medium text-gray-900">
                     {session?.user.email}
                   </div>
-                  {isAdmin && (
-                    <span className="mt-1 inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
-                      Admin
+                  {(session?.user.role === UserRole.SUPERADMIN && (
+                    <span className="mt-1 inline-block px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">
+                      Superadmin
                     </span>
-                  )}
+                  )) ||
+                    (isAdmin && (
+                      <span className="mt-1 inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+                        Admin
+                      </span>
+                    ))}
                 </div>
                 <button
                   onClick={() => {

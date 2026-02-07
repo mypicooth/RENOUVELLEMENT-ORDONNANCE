@@ -14,15 +14,18 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
   const { data: session, status } = useSession();
   const router = useRouter();
 
+  const hasAccess = requiredRole
+    ? session?.user.role === requiredRole ||
+      (requiredRole === UserRole.ADMIN && session?.user.role === UserRole.SUPERADMIN)
+    : true;
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
-    } else if (status === "authenticated" && requiredRole) {
-      if (session.user.role !== requiredRole && session.user.role !== UserRole.ADMIN) {
-        router.push("/");
-      }
+    } else if (status === "authenticated" && requiredRole && !hasAccess) {
+      router.push("/");
     }
-  }, [session, status, router, requiredRole]);
+  }, [session, status, router, requiredRole, hasAccess]);
 
   if (status === "loading") {
     return (
@@ -36,7 +39,7 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     return null;
   }
 
-  if (requiredRole && session?.user.role !== requiredRole && session?.user.role !== UserRole.ADMIN) {
+  if (requiredRole && !hasAccess) {
     return null;
   }
 
