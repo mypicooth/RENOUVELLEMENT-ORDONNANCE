@@ -33,9 +33,14 @@ export default function TemplatesSmsPage() {
     try {
       const res = await fetch("/api/admin/templates-sms");
       const data = await res.json();
-      setTemplates(data);
+      if (!res.ok) {
+        setTemplates([]);
+        return;
+      }
+      setTemplates(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Erreur chargement templates:", error);
+      setTemplates([]);
     } finally {
       setLoading(false);
     }

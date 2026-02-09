@@ -6,7 +6,9 @@ import { UserRole } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== UserRole.ADMIN) {
+  const isAdminOrSuperadmin =
+    session?.user?.role === UserRole.ADMIN || session?.user?.role === UserRole.SUPERADMIN;
+  if (!session || !isAdminOrSuperadmin) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
 
@@ -19,7 +21,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== UserRole.ADMIN) {
+  const isAdminOrSuperadmin =
+    session?.user?.role === UserRole.ADMIN || session?.user?.role === UserRole.SUPERADMIN;
+  if (!session || !isAdminOrSuperadmin) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
 
