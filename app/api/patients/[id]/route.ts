@@ -20,6 +20,10 @@ export async function GET(
         include: {
           renewals: {
             orderBy: { index: "asc" },
+            include: {
+              completedOperator: { select: { prenom: true } },
+              completedBy: { select: { prenom: true, nom: true } },
+            },
           },
         },
         orderBy: { created_at: "desc" },
@@ -88,6 +92,10 @@ export async function PATCH(
           include: {
             renewals: {
               orderBy: { index: "asc" },
+              include: {
+                completedOperator: { select: { prenom: true } },
+                completedBy: { select: { prenom: true, nom: true } },
+              },
             },
           },
           orderBy: { created_at: "desc" },

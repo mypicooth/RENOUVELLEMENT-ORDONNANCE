@@ -48,6 +48,9 @@ interface Patient {
       index: number;
       date_theorique: string;
       statut: string;
+      date_delivrance?: string | null;
+      completedOperator?: { prenom: string } | null;
+      completedBy?: { prenom: string; nom: string } | null;
     }>;
   }>;
 }
@@ -1055,6 +1058,11 @@ export default function PatientDetailPage() {
                                   {STATUT_LABELS[renewal.statut] || renewal.statut}
                                 </span>
                               </div>
+                              {(renewal.statut === "TERMINE" && (renewal.completedOperator?.prenom || renewal.completedBy?.prenom)) && (
+                                <div className="text-[10px] text-gray-600 mb-1">
+                                  Terminé par: {renewal.completedOperator?.prenom ?? renewal.completedBy?.prenom}
+                                </div>
+                              )}
                               
                               {/* QR Codes */}
                               <div className="mt-3 space-y-2">
