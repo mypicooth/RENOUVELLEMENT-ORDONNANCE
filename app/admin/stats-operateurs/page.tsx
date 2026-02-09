@@ -76,10 +76,18 @@ export default function StatsOperateursPage() {
             Stats par opérateur
           </h1>
           <p className="text-sm text-gray-500 mb-6">
-            Renouvellements enregistrés (scan) par employé par mois — pour suivi des primes.
+            Créations de renouvellement (ordonnances) par opérateur par mois — pour suivi des primes.
+            Uniquement les créations (nouveau patient ou nouvelle ordonnance), pas les scans.
           </p>
 
           <div className="flex flex-wrap items-center gap-4 mb-6">
+            <a
+              href="/api/admin/stats-operateurs/export"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              download
+            >
+              📥 Extract global (patients par opérateur, CSV)
+            </a>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Mois
@@ -93,7 +101,7 @@ export default function StatsOperateursPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Objectif renouvellements (prime)
+                Objectif créations (prime)
               </label>
               <input
                 type="number"
@@ -117,6 +125,9 @@ export default function StatsOperateursPage() {
                 <h2 className="text-lg font-semibold text-gray-900">
                   {monthDisplay.charAt(0).toUpperCase() + monthDisplay.slice(1)}
                 </h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  Créations d’ordonnances (nouveau patient ou nouvelle ordonnance) — opérateur sélectionné à la création.
+                </p>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -126,7 +137,7 @@ export default function StatsOperateursPage() {
                         Opérateur
                       </th>
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                        Renouvellements
+                        Créations
                       </th>
                       <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
                         Prime
@@ -137,7 +148,7 @@ export default function StatsOperateursPage() {
                     {data.stats.length === 0 ? (
                       <tr>
                         <td colSpan={3} className="px-4 py-6 text-center text-gray-500">
-                          Aucun renouvellement enregistré pour ce mois.
+                          Aucune création pour ce mois (ou opérateur non renseigné).
                         </td>
                       </tr>
                     ) : (

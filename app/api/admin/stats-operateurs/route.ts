@@ -6,8 +6,9 @@ import { UserRole } from "@/lib/types";
 import { startOfMonth, endOfMonth } from "date-fns";
 
 /**
- * Statistiques des renouvellements par opérateur pour un mois donné.
- * Utilisé pour le suivi des primes (objectif de renouvellements par employé).
+ * Statistiques des créations de renouvellement (ordonnances) par opérateur pour un mois donné.
+ * Uniquement les créations (nouveau patient ou nouvelle ordonnance), pas les scans.
+ * Utilisé pour le suivi des primes (objectif par employé).
  */
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -40,41 +41,41 @@ export async function GET(request: NextRequest) {
     end = endOfMonth(now);
   }
 
-  // Renouvellements terminés dans la période, avec l'opérateur (prénom) qui a scanné
-  const renewals = await prisma.renewalEvent.findMany({
+  // Ordonnances (cycles) créées dans la période, par opérateur créateur
+  const cyclesCreated = await prisma.prescriptionCycle.findMany({
     where: {
-      statut: "TERMINE",
-      date_termine: {
+      created_at: {
         gte: start,
         lte: end,
       },
     },
     select: {
-      completed_operator_id: true,
-      completedOperator: {
+      created_operator_id: true,
+      createdOperator: {
         select: { id: true, prenom: true },
       },
     },
   });
 
-  // Grouper par opérateur (prénom)
-  const byOperator = new Map<
+  const byCreator = new Map<
     string,
     { userId: string; name: string; email: string; count: number }
   >();
 
-  for (const r of renewals) {
-    const key = r.completed_operator_id ?? "__non_attribue__";
-    const name = r.completedOperator?.prenom ?? "Non attribué";
-    const userId = r.completed_operator_id ?? "";
+  for (const c of cyclesCreated) {
+    const key = c.created_operator_id ?? "__non_attribue__";
+    const name = c.createdOperator?.prenom ?? "Non attribué";
+    const userId = c.created_operator_id ?? "";
 
-    if (!byOperator.has(key)) {
-      byOperator.set(key, { userId, name, email: "", count: 0 });
+    if (!byCreator.has(key)) {
+      byCreator.set(key, { userId, name, email: "", count: 0 });
     }
-    byOperator.get(key)!.count += 1;
+    byCreator.get(key)!.count += 1;
   }
 
-  const stats = Array.from(byOperator.values()).sort((a, b) => b.count - a.count);
+  const stats = Array.from(byCreator.values()).sort(
+    (a, b) => b.count - a.count
+  );
 
   return NextResponse.json({
     month: monthParam || `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`,
