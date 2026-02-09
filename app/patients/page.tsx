@@ -35,10 +35,12 @@ export default function PatientsPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedPatients, setSelectedPatients] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const isAdmin = session?.user.role === UserRole.ADMIN;
 
   const loadPatients = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const params = new URLSearchParams();
       if (search) {
@@ -49,9 +51,20 @@ export default function PatientsPage() {
       }
       const res = await fetch(`/api/patients?${params.toString()}`);
       const data = await res.json();
-      
+
+      if (!res.ok) {
+        const msg =
+          (data?.details && typeof data.details === "string") ||
+          data?.error ||
+          "Erreur lors du chargement des patients.";
+        setLoadError(msg);
+        setPatients([]);
+        return;
+      }
+
+      const list = Array.isArray(data) ? data : [];
       // Trier les patients
-      const sorted = [...data].sort((a, b) => {
+      const sorted = [...list].sort((a, b) => {
         if (sortBy === "nom") {
           const comparison = a.nom.localeCompare(b.nom, "fr");
           return sortOrder === "asc" ? comparison : -comparison;
@@ -61,10 +74,12 @@ export default function PatientsPage() {
           return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
         }
       });
-      
+
       setPatients(sorted);
     } catch (error) {
       console.error("Erreur chargement patients:", error);
+      setLoadError("Erreur réseau ou serveur. Réessayez ou vérifiez les migrations en production.");
+      setPatients([]);
     } finally {
       setLoading(false);
     }
@@ -379,6 +394,24 @@ export default function PatientsPage() {
             </div>
           </div>
 
+          {loadError && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800">
+              <p className="font-medium">Impossible de charger la liste des patients</p>
+              <p className="mt-1 text-sm">{loadError}</p>
+              <p className="mt-2 text-sm">
+                Si l’application vient d’être mise à jour, exécutez les migrations sur la base de production (voir{" "}
+                <code className="rounded bg-amber-100 px-1">MIGRATION-OPERATEURS-A-Z.md</code>). Vos données ne sont pas perdues.
+              </p>
+              <button
+                type="button"
+                onClick={() => loadPatients()}
+                className="mt-3 rounded border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-700 hover:bg-amber-100"
+              >
+                Réessayer
+              </button>
+            </div>
+          )}
+
           {/* Barre d'actions en bloc */}
           {selectedPatients.size > 0 && (
             <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -424,7 +457,7 @@ export default function PatientsPage() {
 
           {loading ? (
             <div className="text-center py-8">Chargement...</div>
-          ) : patients.length === 0 ? (
+          ) : loadError ? null : patients.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               Aucun patient trouvé
             </div>

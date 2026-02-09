@@ -32,20 +32,32 @@ export async function GET(request: NextRequest) {
     ];
   }
 
-  const patients = await prisma.patient.findMany({
-    where,
-    include: {
-      cycles: {
-        include: {
-          renewals: true,
+  try {
+    const patients = await prisma.patient.findMany({
+      where,
+      include: {
+        cycles: {
+          include: {
+            renewals: true,
+          },
         },
       },
-    },
-    orderBy: { date_recrutement: "desc" },
-    take: 100,
-  });
+      orderBy: { date_recrutement: "desc" },
+      take: 100,
+    });
 
-  return NextResponse.json(patients);
+    return NextResponse.json(patients);
+  } catch (error) {
+    console.error("Erreur GET /api/patients:", error);
+    const message =
+      process.env.NODE_ENV === "development"
+        ? String(error)
+        : "Impossible de charger les patients. Vérifiez que les migrations ont été exécutées en production (voir MIGRATION-OPERATEURS-A-Z.md).";
+    return NextResponse.json(
+      { error: "Erreur serveur lors du chargement des patients", details: message },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
