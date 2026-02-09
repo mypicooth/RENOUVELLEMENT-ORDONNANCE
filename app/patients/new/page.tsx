@@ -518,8 +518,9 @@ export default function NewPatientPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                  disabled={loading || !formData.operateur_id}
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!formData.operateur_id ? "Sélectionnez un opérateur" : undefined}
                 >
                   {loading ? "Création..." : "Créer"}
                 </button>
