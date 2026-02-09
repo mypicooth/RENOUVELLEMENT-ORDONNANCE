@@ -85,25 +85,44 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Nouveaux patients ce mois
-    const nouveauxPatients = await prisma.patient.count({
+    const startMonth = startOfMonth(now);
+    const endMonth = endOfMonth(now);
+
+    // Nouveaux cycles ce mois (toutes ordonnances confondues)
+    const nouveauxCycles = await prisma.prescriptionCycle.count({
       where: {
-        date_recrutement: {
-          gte: startOfMonth(now),
-          lte: endOfMonth(now),
+        created_at: {
+          gte: startMonth,
+          lte: endMonth,
         },
       },
     });
 
-    // Nouveaux cycles ce mois
-    const nouveauxCycles = await prisma.prescriptionCycle.count({
-      where: {
-        created_at: {
-          gte: startOfMonth(now),
-          lte: endOfMonth(now),
-        },
-      },
+    // Patients qui avaient déjà au moins un cycle avant ce mois (patients déjà suivis)
+    const cyclesAvantMois = await prisma.prescriptionCycle.findMany({
+      where: { created_at: { lt: startMonth } },
+      select: { patient_id: true },
     });
+    const patientIdsDejaSuivis = new Set(cyclesAvantMois.map((c) => c.patient_id));
+
+    // Cycles créés ce mois (pour savoir quels patients ont eu une ordonnance ce mois)
+    const cyclesCeMois = await prisma.prescriptionCycle.findMany({
+      where: {
+        created_at: { gte: startMonth, lte: endMonth },
+      },
+      select: { patient_id: true },
+    });
+    const patientIdsAvecCycleCeMois = new Set(cyclesCeMois.map((c) => c.patient_id));
+
+    // Vrais nouveaux patients = première ordonnance ce mois (aucun cycle avant ce mois)
+    const nouveauxPatients = [...patientIdsAvecCycleCeMois].filter(
+      (pid) => !patientIdsDejaSuivis.has(pid)
+    ).length;
+
+    // Nouvelles ordonnances pour des patients déjà suivis (info distincte)
+    const nouveauxCyclesPatientsExistants = cyclesCeMois.filter((c) =>
+      patientIdsDejaSuivis.has(c.patient_id)
+    ).length;
 
     // SMS envoyés ce mois
     const smsLogsMonth = await prisma.smsLog.count({
@@ -118,8 +137,9 @@ export async function GET(request: NextRequest) {
 
     const monthStats = {
       total: renewalsMonth.length,
-      nouveauxPatients,
-      nouveauxCycles,
+      nouveauxPatients, // vrais nouveaux (première ordonnance ce mois)
+      nouveauxCycles, // toutes nouvelles ordonnances ce mois
+      nouveauxCyclesPatientsExistants, // nouvelles ordonnances pour patients déjà suivis
       smsEnvoyes: smsLogsMonth,
     };
 

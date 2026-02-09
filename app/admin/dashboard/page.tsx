@@ -25,6 +25,7 @@ interface KpiData {
     total: number;
     nouveauxPatients: number;
     nouveauxCycles: number;
+    nouveauxCyclesPatientsExistants?: number;
     smsEnvoyes: number;
   };
   patients: {
@@ -139,14 +140,17 @@ export default function AdminDashboardPage() {
               </p>
             </div>
 
-            {/* Nouveaux patients */}
+            {/* Vrais nouveaux patients (première ordonnance) / Total patients */}
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-sm font-medium text-gray-500 mb-2">
-                {period === "month" ? "Nouveaux patients" : "Total patients"}
+                {period === "month" ? "Vrais nouveaux patients" : "Total patients"}
               </h3>
               <p className="text-3xl font-bold text-blue-600">
                 {period === "month" ? kpiData.month.nouveauxPatients : kpiData.patients.total}
               </p>
+              {period === "month" && (
+                <p className="text-xs text-gray-500 mt-1">Première ordonnance ce mois uniquement</p>
+              )}
             </div>
           </div>
 
@@ -215,18 +219,26 @@ export default function AdminDashboardPage() {
           {period === "month" && (
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Ce mois</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div>
-                  <p className="text-sm text-gray-500">Nouveaux cycles</p>
-                  <p className="text-2xl font-bold text-blue-600">{kpiData.month.nouveauxCycles}</p>
+                  <p className="text-sm text-gray-500">Vrais nouveaux patients</p>
+                  <p className="text-2xl font-bold text-blue-600">{kpiData.month.nouveauxPatients}</p>
+                  <p className="text-xs text-gray-500">Première ordonnance ce mois</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Nouvelles ordonnances (total)</p>
+                  <p className="text-2xl font-bold text-indigo-600">{kpiData.month.nouveauxCycles}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Dont patients déjà suivis</p>
+                  <p className="text-2xl font-bold text-gray-600">
+                    {kpiData.month.nouveauxCyclesPatientsExistants ?? 0}
+                  </p>
+                  <p className="text-xs text-gray-500">Nouvelle ordonnance, patient connu</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">SMS envoyés</p>
                   <p className="text-2xl font-bold text-purple-600">{kpiData.month.smsEnvoyes}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Total renouvellements</p>
-                  <p className="text-2xl font-bold text-gray-900">{kpiData.month.total}</p>
                 </div>
               </div>
             </div>
