@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import type { Prisma } from "@prisma/client";
 import { addDays, getDay } from "date-fns";
 
 /**
@@ -37,7 +38,7 @@ export async function createPrescriptionCycle(params: {
     createdOperatorId = null,
   } = params;
 
-  // Créer le cycle
+  // Créer le cycle (created_operator_id présent dans le schéma Prisma)
   const cycle = await prisma.prescriptionCycle.create({
     data: {
       patient_id: patientId,
@@ -45,10 +46,8 @@ export async function createPrescriptionCycle(params: {
       nb_renouvellements: nbRenouvellements,
       intervalle_jours: intervalleJours,
       created_by: createdBy,
-      ...(createdOperatorId
-        ? { createdOperator: { connect: { id: createdOperatorId } } }
-        : {}),
-    },
+      created_operator_id: createdOperatorId ?? undefined,
+    } as Prisma.PrescriptionCycleUncheckedCreateInput,
   });
 
   // Générer tous les RenewalEvents
