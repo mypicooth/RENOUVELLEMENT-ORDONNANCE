@@ -40,6 +40,7 @@ model Operator {
   createdAt DateTime @default(now())
 
   patientsRegistered Patient[]      @relation("RegisteredOperator")
+  cyclesCreated      PrescriptionCycle[] @relation("CycleCreatedByOperator")
   renewalsCompleted  RenewalEvent[] @relation("CompletedByOperator")
 
   @@map("operators")
@@ -76,11 +77,13 @@ model PrescriptionCycle {
   intervalle_jours         Int      @default(21)
   statut                   String   @default("ACTIF") // ACTIF, TERMINE, ANNULE
   created_by               String
+  created_operator_id      String?  // Opérateur (prénom) qui a créé l'ordonnance (pour stats / détails)
   created_at               DateTime @default(now())
   updatedAt                DateTime @updatedAt
 
   patient  Patient        @relation(fields: [patient_id], references: [id])
   creator  User           @relation("CreatedBy", fields: [created_by], references: [id])
+  createdOperator Operator? @relation("CycleCreatedByOperator", fields: [created_operator_id], references: [id])
   renewals RenewalEvent[]
   smsLogs  SmsLog[]
 

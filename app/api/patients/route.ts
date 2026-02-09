@@ -182,6 +182,8 @@ export async function POST(request: NextRequest) {
         nbRenouvellements: parseInt(nb_renouvellements),
         intervalleJours: intervalle_jours ? parseInt(intervalle_jours) : 21,
         createdBy: session.user.id,
+        // L'opérateur sélectionné lors du recrutement crée l'ordonnance
+        createdOperatorId: operatorId,
       });
 
       return NextResponse.json({

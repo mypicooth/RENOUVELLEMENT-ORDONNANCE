@@ -26,8 +26,16 @@ export async function createPrescriptionCycle(params: {
   nbRenouvellements: number;
   intervalleJours?: number;
   createdBy: string;
+  createdOperatorId?: string | null;
 }) {
-  const { patientId, datePremiereDelivrance, nbRenouvellements, intervalleJours = 21, createdBy } = params;
+  const {
+    patientId,
+    datePremiereDelivrance,
+    nbRenouvellements,
+    intervalleJours = 21,
+    createdBy,
+    createdOperatorId = null,
+  } = params;
 
   // Créer le cycle
   const cycle = await prisma.prescriptionCycle.create({
@@ -37,6 +45,9 @@ export async function createPrescriptionCycle(params: {
       nb_renouvellements: nbRenouvellements,
       intervalle_jours: intervalleJours,
       created_by: createdBy,
+      ...(createdOperatorId
+        ? { createdOperator: { connect: { id: createdOperatorId } } }
+        : {}),
     },
   });
 

@@ -43,6 +43,7 @@ interface Patient {
     nb_renouvellements: number;
     intervalle_jours?: number;
     statut: string;
+    createdOperator?: { prenom: string } | null;
     renewals: Array<{
       id: string;
       index: number;
@@ -93,6 +94,8 @@ export default function PatientDetailPage() {
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [showNewCycle, setShowNewCycle] = useState(false);
   const [creatingCycle, setCreatingCycle] = useState(false);
+  const [operators, setOperators] = useState<Array<{ id: string; label: string }>>([]);
+  const [newCycleOperatorId, setNewCycleOperatorId] = useState<string>("");
   const [newCycleData, setNewCycleData] = useState({
     date_premiere_delivrance: format(new Date(), "yyyy-MM-dd"),
     nb_renouvellements: "12",
@@ -110,6 +113,26 @@ export default function PatientDetailPage() {
   const [updatingRenewal, setUpdatingRenewal] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
   const isAdmin = session?.user.role === UserRole.ADMIN;
+
+  useEffect(() => {
+    if (!showNewCycle) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/operators");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setOperators(data);
+          // Pré-sélection : si une seule option, on la choisit
+          if (data.length === 1 && data[0]?.id) {
+            setNewCycleOperatorId(data[0].id);
+          }
+        }
+      } catch (e) {
+        // silencieux : le formulaire affichera l'erreur si opérateur manquant
+      }
+    })();
+  }, [showNewCycle]);
 
   const loadPatient = useCallback(async () => {
     if (!params.id) return;
@@ -466,6 +489,10 @@ export default function PatientDetailPage() {
       alert("Veuillez remplir tous les champs obligatoires");
       return;
     }
+    if (!newCycleOperatorId) {
+      alert("Veuillez sélectionner l'opérateur qui crée cette ordonnance");
+      return;
+    }
 
     setCreatingCycle(true);
     try {
@@ -477,6 +504,7 @@ export default function PatientDetailPage() {
           date_premiere_delivrance: newCycleData.date_premiere_delivrance,
           nb_renouvellements: parseInt(newCycleData.nb_renouvellements),
           intervalle_jours: parseInt(newCycleData.intervalle_jours) || 21,
+          operateur_id: newCycleOperatorId,
         }),
       });
 
@@ -874,7 +902,28 @@ export default function PatientDetailPage() {
                 <h3 className="text-md font-semibold text-gray-900 mb-4">
                   Créer un nouveau cycle de prescription
                 </h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Opérateur (créateur) *
+                    </label>
+                    <select
+                      value={newCycleOperatorId}
+                      onChange={(e) => setNewCycleOperatorId(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    >
+                      <option value="">-- Choisir --</option>
+                      {operators.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Sert à tracer qui a créé l’ordonnance (et donc les renouvellements)
+                    </p>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Date 1ère délivrance (R0) *
@@ -965,6 +1014,9 @@ export default function PatientDetailPage() {
                         <p className="text-sm text-gray-500">
                           {cycle.nb_renouvellements} renouvellement(s) - Intervalle: 21
                           jours
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Ordonnance créée par : {cycle.createdOperator?.prenom ?? "—"}
                         </p>
                       </div>
                       <span
@@ -1058,9 +1110,10 @@ export default function PatientDetailPage() {
                                   {STATUT_LABELS[renewal.statut] || renewal.statut}
                                 </span>
                               </div>
-                              {(renewal.statut === "TERMINE" && (renewal.completedOperator?.prenom || renewal.completedBy?.prenom)) && (
-                                <div className="text-[10px] text-gray-600 mb-1">
-                                  Terminé par: {renewal.completedOperator?.prenom ?? renewal.completedBy?.prenom}
+                              {renewal.statut === "TERMINE" && (
+                                <div className="text-xs text-gray-700 mb-2 px-2 py-1 bg-gray-50 rounded border border-gray-100">
+                                  <span className="font-medium text-gray-600">Terminé par : </span>
+                                  {renewal.completedOperator?.prenom ?? renewal.completedBy?.prenom ?? "—"}
                                 </div>
                               )}
                               

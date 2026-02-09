@@ -18,6 +18,7 @@ export async function GET(
     include: {
       cycles: {
         include: {
+          createdOperator: { select: { prenom: true } },
           renewals: {
             orderBy: { index: "asc" },
             include: {
@@ -90,6 +91,7 @@ export async function PATCH(
       include: {
         cycles: {
           include: {
+            createdOperator: { select: { prenom: true } },
             renewals: {
               orderBy: { index: "asc" },
               include: {

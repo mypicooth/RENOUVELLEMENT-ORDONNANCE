@@ -11,11 +11,19 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { patientId, date_premiere_delivrance, nb_renouvellements, intervalle_jours } = body;
+    const { patientId, date_premiere_delivrance, nb_renouvellements, intervalle_jours, operateur_id } = body;
 
     if (!patientId || !date_premiere_delivrance || nb_renouvellements === undefined) {
       return NextResponse.json(
         { error: "patientId, date_premiere_delivrance et nb_renouvellements requis" },
+        { status: 400 }
+      );
+    }
+
+    // Opérateur obligatoire pour tracer qui a créé l'ordonnance (cycle)
+    if (!operateur_id) {
+      return NextResponse.json(
+        { error: "Veuillez sélectionner l'opérateur qui crée cette ordonnance" },
         { status: 400 }
       );
     }
@@ -48,6 +56,7 @@ export async function POST(request: NextRequest) {
       nbRenouvellements: parseInt(nb_renouvellements),
       intervalleJours: intervalle_jours ? parseInt(intervalle_jours) : 21,
       createdBy: session.user.id,
+      createdOperatorId: operateur_id,
     });
 
     return NextResponse.json(cycle);
