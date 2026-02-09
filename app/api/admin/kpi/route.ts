@@ -7,7 +7,9 @@ import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth 
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== UserRole.ADMIN) {
+  const isAdminOrSuperadmin =
+    session?.user?.role === UserRole.ADMIN || session?.user?.role === UserRole.SUPERADMIN;
+  if (!session || !isAdminOrSuperadmin) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
 
