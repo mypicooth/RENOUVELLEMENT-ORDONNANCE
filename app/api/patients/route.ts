@@ -113,8 +113,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vérifier si le patient existe déjà par téléphone
-    const existingByPhone = await prisma.patient.findFirst({
+    // Vérifier si d'autres patients ont déjà ce numéro (informatif uniquement, on ne fusionne pas)
+    const existingByPhone = await prisma.patient.findMany({
       where: {
         telephone_normalise: phoneNormalized,
         actif: true,
@@ -144,40 +144,33 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    let patient;
-    if (existingByPhone) {
-      // Mettre à jour le patient existant (même téléphone)
-      patient = await prisma.patient.update({
-        where: { id: existingByPhone.id },
-        data: {
-          nom,
-          prenom,
-          consentement,
-          notes,
-        },
-      });
-    } else {
-      // Créer un nouveau patient (opérateur = prénom choisi dans la liste)
-      patient = await prisma.patient.create({
-        data: {
-          nom,
-          prenom,
-          telephone_normalise: phoneNormalized,
-          consentement,
-          notes,
-          ...(operatorId && { registered_operator_id: operatorId }),
-        } as Prisma.PatientUncheckedCreateInput,
-      });
-    }
+    // Toujours créer un nouveau patient (plus de fusion par téléphone : deux personnes peuvent partager le même numéro)
+    const patient = await prisma.patient.create({
+      data: {
+        nom,
+        prenom,
+        telephone_normalise: phoneNormalized,
+        consentement,
+        notes,
+        ...(operatorId && { registered_operator_id: operatorId }),
+      } as Prisma.PatientUncheckedCreateInput,
+    });
 
-    // Retourner aussi les patients avec le même nom pour information
+    // Retourner les doublons éventuels (même nom) et les autres patients avec le même téléphone (information)
     const response: any = { patient };
-    if (existingByName.length > 0 && !existingByPhone) {
+    if (existingByName.length > 0) {
       response.duplicates = existingByName.map((p) => ({
         id: p.id,
         nom: p.nom,
         prenom: p.prenom,
         telephone_normalise: p.telephone_normalise,
+      }));
+    }
+    if (existingByPhone.length > 0) {
+      response.samePhonePatients = existingByPhone.map((p) => ({
+        id: p.id,
+        nom: p.nom,
+        prenom: p.prenom,
       }));
     }
 
