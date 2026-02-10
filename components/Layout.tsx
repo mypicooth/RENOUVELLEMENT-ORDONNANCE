@@ -22,13 +22,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { href: "/patients/terminated", label: "Patients terminés" },
     ...(isAdmin
       ? [
-          { href: "/admin/dashboard", label: "Dashboard KPI" },
-          ...(isSuperAdmin
-            ? [
-                { href: "/admin/stats-operateurs", label: "Stats opérateurs" },
-                { href: "/admin/operateurs", label: "Opérateurs" },
-              ]
-            : []),
+          ...(isSuperAdmin ? [{ href: "/admin/dashboard", label: "Dashboard KPI" }] : []),
+          { href: "/admin/stats-operateurs", label: "Stats opérateurs" },
+          ...(isSuperAdmin ? [{ href: "/admin/operateurs", label: "Opérateurs" }] : []),
           { href: "/admin/templates-sms", label: "Templates SMS" },
         ]
       : []),

@@ -23,8 +23,10 @@ export async function GET() {
   if (!session) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
-  if (session.user.role !== UserRole.SUPERADMIN) {
-    return NextResponse.json({ error: "Accès réservé au superadmin" }, { status: 403 });
+  const isAdminOrSuperadmin =
+    session.user.role === UserRole.ADMIN || session.user.role === UserRole.SUPERADMIN;
+  if (!isAdminOrSuperadmin) {
+    return NextResponse.json({ error: "Accès réservé aux administrateurs" }, { status: 403 });
   }
 
   const patients = await prisma.patient.findMany({
