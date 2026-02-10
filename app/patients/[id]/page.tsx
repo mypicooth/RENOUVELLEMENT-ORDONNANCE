@@ -43,6 +43,7 @@ interface Patient {
     nb_renouvellements: number;
     intervalle_jours?: number;
     statut: string;
+    created_operator_id?: string | null;
     createdOperator?: { prenom: string } | null;
     renewals: Array<{
       id: string;
@@ -112,7 +113,24 @@ export default function PatientDetailPage() {
   const [renewalNewDate, setRenewalNewDate] = useState("");
   const [updatingRenewal, setUpdatingRenewal] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
+  const [savingCycleOperatorId, setSavingCycleOperatorId] = useState<string | null>(null);
   const isAdmin = session?.user.role === UserRole.ADMIN;
+  const isSuperAdmin = session?.user.role === UserRole.SUPERADMIN;
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      (async () => {
+        try {
+          const res = await fetch("/api/operators");
+          if (!res.ok) return;
+          const data = await res.json();
+          if (Array.isArray(data)) setOperators(data);
+        } catch (e) {
+          /* silencieux */
+        }
+      })();
+    }
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     if (!showNewCycle) return;
@@ -526,6 +544,29 @@ export default function PatientDetailPage() {
       alert("Erreur lors de la création du cycle");
     } finally {
       setCreatingCycle(false);
+    }
+  };
+
+  const handleCycleOperatorChange = async (cycleId: string, createdOperatorId: string) => {
+    setSavingCycleOperatorId(cycleId);
+    try {
+      const res = await fetch(`/api/admin/cycles/${cycleId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          created_operator_id: createdOperatorId || null,
+        }),
+      });
+      if (res.ok) {
+        loadPatient();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Erreur lors de l’attribution");
+      }
+    } catch (e) {
+      alert("Erreur lors de l’attribution de l’opérateur");
+    } finally {
+      setSavingCycleOperatorId(null);
     }
   };
 
@@ -1017,7 +1058,30 @@ export default function PatientDetailPage() {
                           jours
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                          Ordonnance créée par : {cycle.createdOperator?.prenom ?? "—"}
+                          Ordonnance créée par :{" "}
+                          {isSuperAdmin ? (
+                            <select
+                              value={cycle.created_operator_id ?? ""}
+                              onChange={(e) =>
+                                handleCycleOperatorChange(cycle.id, e.target.value)
+                              }
+                              disabled={savingCycleOperatorId === cycle.id}
+                              className="ml-1 text-gray-700 border border-gray-300 rounded px-2 py-0.5 text-xs bg-white disabled:opacity-50"
+                              title="Attribuer ou modifier l’opérateur (Superadmin)"
+                            >
+                              <option value="">— Non attribué —</option>
+                              {operators.map((o) => (
+                                <option key={o.id} value={o.id}>
+                                  {o.label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span>{cycle.createdOperator?.prenom ?? "—"}</span>
+                          )}
+                          {isSuperAdmin && savingCycleOperatorId === cycle.id && (
+                            <span className="ml-1 text-gray-400">...</span>
+                          )}
                         </p>
                       </div>
                       <span
