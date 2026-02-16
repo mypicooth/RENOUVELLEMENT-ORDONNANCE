@@ -130,6 +130,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Si tous les renouvellements du cycle sont TERMINE ou ANNULE, passer le cycle en TERMINE
+    const allRenewals = await prisma.renewalEvent.findMany({
+      where: { prescription_cycle_id: cycle.id },
+      select: { statut: true },
+    });
+    const allDone = allRenewals.length > 0 && allRenewals.every(
+      (r) => r.statut === "TERMINE" || r.statut === "ANNULE"
+    );
+    if (allDone) {
+      await prisma.prescriptionCycle.update({
+        where: { id: cycle.id },
+        data: { statut: "TERMINE" },
+      });
+    }
+
     // Récupérer le cycle mis à jour
     const updatedCycle = await prisma.prescriptionCycle.findUnique({
       where: { id: cycle.id },

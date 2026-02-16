@@ -36,6 +36,24 @@ export async function GET(
     return NextResponse.json({ error: "Patient introuvable" }, { status: 404 });
   }
 
+  // Corriger les cycles dont tous les renouvellements sont terminés mais le statut est encore ACTIF
+  for (const cycle of patient.cycles) {
+    if (cycle.statut !== "ACTIF") continue;
+    const renewals = cycle.renewals ?? [];
+    const allDone =
+      renewals.length > 0 &&
+      renewals.every(
+        (r) => r.statut === "TERMINE" || r.statut === "ANNULE"
+      );
+    if (allDone) {
+      await prisma.prescriptionCycle.update({
+        where: { id: cycle.id },
+        data: { statut: "TERMINE" },
+      });
+      (cycle as { statut: string }).statut = "TERMINE";
+    }
+  }
+
   return NextResponse.json(patient);
 }
 
