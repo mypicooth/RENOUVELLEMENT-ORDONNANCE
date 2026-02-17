@@ -114,8 +114,13 @@ export default function PatientDetailPage() {
   const [updatingRenewal, setUpdatingRenewal] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
   const [savingCycleOperatorId, setSavingCycleOperatorId] = useState<string | null>(null);
+  const [stoppingCycleId, setStoppingCycleId] = useState<string | null>(null);
+  const [editingNbRenewalsCycleId, setEditingNbRenewalsCycleId] = useState<string | null>(null);
+  const [nbRenewalsEditValue, setNbRenewalsEditValue] = useState("");
+  const [savingNbRenewals, setSavingNbRenewals] = useState(false);
   const isAdmin = session?.user.role === UserRole.ADMIN;
   const isSuperAdmin = session?.user.role === UserRole.SUPERADMIN;
+  const canManageCycle = isAdmin || isSuperAdmin;
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -567,6 +572,66 @@ export default function PatientDetailPage() {
       alert("Erreur lors de l’attribution de l’opérateur");
     } finally {
       setSavingCycleOperatorId(null);
+    }
+  };
+
+  const handleStopCycle = async (cycleId: string) => {
+    if (!confirm("Arrêter ce cycle ? Les renouvellements non encore terminés seront annulés.")) return;
+    setStoppingCycleId(cycleId);
+    try {
+      const res = await fetch(`/api/admin/cycles/${cycleId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stop: true }),
+      });
+      if (res.ok) {
+        loadPatient();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Erreur lors de l'arrêt du cycle");
+      }
+    } catch (e) {
+      alert("Erreur lors de l'arrêt du cycle");
+    } finally {
+      setStoppingCycleId(null);
+    }
+  };
+
+  const handleStartEditNbRenewals = (cycleId: string, currentNb: number) => {
+    setEditingNbRenewalsCycleId(cycleId);
+    setNbRenewalsEditValue(String(currentNb));
+  };
+
+  const handleCancelEditNbRenewals = () => {
+    setEditingNbRenewalsCycleId(null);
+    setNbRenewalsEditValue("");
+  };
+
+  const handleApplyNbRenewals = async (cycleId: string) => {
+    const num = parseInt(nbRenewalsEditValue, 10);
+    if (Number.isNaN(num) || num < 1 || num > 99) {
+      alert("Veuillez entrer un nombre entre 1 et 99");
+      return;
+    }
+    setSavingNbRenewals(true);
+    try {
+      const res = await fetch(`/api/admin/cycles/${cycleId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nb_renouvellements: num }),
+      });
+      if (res.ok) {
+        setEditingNbRenewalsCycleId(null);
+        setNbRenewalsEditValue("");
+        loadPatient();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Erreur lors de la modification");
+      }
+    } catch (e) {
+      alert("Erreur lors de la modification du nombre de renouvellements");
+    } finally {
+      setSavingNbRenewals(false);
     }
   };
 
@@ -1054,8 +1119,50 @@ export default function PatientDetailPage() {
                           )}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {cycle.nb_renouvellements} renouvellement(s) - Intervalle: 21
-                          jours
+                          {editingNbRenewalsCycleId === cycle.id ? (
+                            <span className="flex flex-wrap items-center gap-2">
+                              <input
+                                type="number"
+                                min={1}
+                                max={99}
+                                value={nbRenewalsEditValue}
+                                onChange={(e) => setNbRenewalsEditValue(e.target.value)}
+                                disabled={savingNbRenewals}
+                                className="w-16 px-2 py-0.5 text-sm border border-gray-300 rounded text-gray-900"
+                              />
+                              renouvellement(s)
+                              <button
+                                type="button"
+                                onClick={() => handleApplyNbRenewals(cycle.id)}
+                                disabled={savingNbRenewals}
+                                className="px-2 py-0.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                              >
+                                {savingNbRenewals ? "..." : "Appliquer"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleCancelEditNbRenewals}
+                                disabled={savingNbRenewals}
+                                className="px-2 py-0.5 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                              >
+                                Annuler
+                              </button>
+                            </span>
+                          ) : (
+                            <>
+                              {cycle.nb_renouvellements} renouvellement(s)
+                              {canManageCycle && cycle.statut === "ACTIF" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditNbRenewals(cycle.id, cycle.nb_renouvellements)}
+                                  className="ml-2 text-xs text-blue-600 hover:underline"
+                                >
+                                  Modifier
+                                </button>
+                              )}
+                              {" "}- Intervalle: 21 jours
+                            </>
+                          )}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
                           Ordonnance créée par :{" "}
@@ -1084,15 +1191,27 @@ export default function PatientDetailPage() {
                           )}
                         </p>
                       </div>
-                      <span
-                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                          cycle.statut === "ACTIF"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {cycle.statut}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            cycle.statut === "ACTIF"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {cycle.statut}
+                        </span>
+                        {canManageCycle && cycle.statut === "ACTIF" && (
+                          <button
+                            type="button"
+                            onClick={() => handleStopCycle(cycle.id)}
+                            disabled={stoppingCycleId === cycle.id}
+                            className="px-2 py-1 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded hover:bg-red-100 disabled:opacity-50"
+                          >
+                            {stoppingCycleId === cycle.id ? "..." : "Arrêter le cycle"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div className="mt-3">
                       <div className="mb-2">
