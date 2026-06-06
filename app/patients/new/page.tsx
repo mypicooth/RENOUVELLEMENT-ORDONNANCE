@@ -43,6 +43,8 @@ export default function NewPatientPage() {
     date_recrutement: string;
   }>>([]);
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [sendingTestSms, setSendingTestSms] = useState(false);
+  const [testSmsResult, setTestSmsResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Charger la liste des opérateurs (prénoms uniquement)
   useEffect(() => {
@@ -85,6 +87,31 @@ export default function NewPatientPage() {
     debounceTimeout.current = setTimeout(() => {
       checkDuplicates(value);
     }, 500); // Attendre 500ms après la dernière frappe
+  };
+
+  const sendTestSms = async () => {
+    if (!formData.telephone) return;
+    const phoneNormalized = normalizePhone(formData.telephone);
+    if (!phoneNormalized) return;
+    setSendingTestSms(true);
+    setTestSmsResult(null);
+    try {
+      const res = await fetch("/api/sms/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telephone: phoneNormalized }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTestSmsResult({ success: true, message: "SMS envoyé ✓" });
+      } else {
+        setTestSmsResult({ success: false, message: data.error || "Échec de l'envoi" });
+      }
+    } catch {
+      setTestSmsResult({ success: false, message: "Erreur réseau" });
+    } finally {
+      setSendingTestSms(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -268,16 +295,33 @@ export default function NewPatientPage() {
                 <label className="block text-sm font-medium text-gray-700">
                   Téléphone *
                 </label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="06 12 34 56 78 ou +33 6 12 34 56 78"
-                  value={formData.telephone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, telephone: e.target.value })
-                  }
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="tel"
+                    required
+                    placeholder="06 12 34 56 78 ou +33 6 12 34 56 78"
+                    value={formData.telephone}
+                    onChange={(e) => {
+                      setFormData({ ...formData, telephone: e.target.value });
+                      setTestSmsResult(null);
+                    }}
+                    className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={sendTestSms}
+                    disabled={sendingTestSms || !formData.telephone || !normalizePhone(formData.telephone)}
+                    title="Envoyer un SMS test pour vérifier que le numéro n'est pas en spam"
+                    className="whitespace-nowrap px-2 py-2 text-xs font-medium bg-orange-100 text-orange-700 border border-orange-300 rounded-md hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {sendingTestSms ? "Envoi..." : "TEST SMS"}
+                  </button>
+                </div>
+                {testSmsResult && (
+                  <p className={`mt-1 text-xs font-medium ${testSmsResult.success ? "text-green-600" : "text-red-600"}`}>
+                    {testSmsResult.message}
+                  </p>
+                )}
               </div>
 
               <div>

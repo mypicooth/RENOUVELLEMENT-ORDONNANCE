@@ -118,6 +118,8 @@ export default function PatientDetailPage() {
   const [editingNbRenewalsCycleId, setEditingNbRenewalsCycleId] = useState<string | null>(null);
   const [nbRenewalsEditValue, setNbRenewalsEditValue] = useState("");
   const [savingNbRenewals, setSavingNbRenewals] = useState(false);
+  const [sendingTestSms, setSendingTestSms] = useState(false);
+  const [testSmsResult, setTestSmsResult] = useState<{ success: boolean; message: string } | null>(null);
   const isAdmin = session?.user.role === UserRole.ADMIN;
   const isSuperAdmin = session?.user.role === UserRole.SUPERADMIN;
   const canManageCycle = isAdmin || isSuperAdmin;
@@ -420,6 +422,29 @@ export default function PatientDetailPage() {
       debounceTimeout.current = setTimeout(() => {
         checkDuplicates(value, params.id as string);
       }, 500);
+    }
+  };
+
+  const sendTestSms = async () => {
+    if (!patient) return;
+    setSendingTestSms(true);
+    setTestSmsResult(null);
+    try {
+      const res = await fetch("/api/sms/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telephone: patient.telephone_normalise }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTestSmsResult({ success: true, message: "SMS envoyé ✓" });
+      } else {
+        setTestSmsResult({ success: false, message: data.error || "Échec de l'envoi" });
+      }
+    } catch {
+      setTestSmsResult({ success: false, message: "Erreur réseau" });
+    } finally {
+      setSendingTestSms(false);
     }
   };
 
@@ -878,8 +903,21 @@ export default function PatientDetailPage() {
               <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Téléphone</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
+                  <dd className="mt-1 text-sm text-gray-900 flex items-center gap-2 flex-wrap">
                     {patient.telephone_normalise}
+                    <button
+                      onClick={sendTestSms}
+                      disabled={sendingTestSms}
+                      title="Envoyer un SMS test pour vérifier que le numéro n'est pas en spam"
+                      className="px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 border border-orange-300 rounded hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {sendingTestSms ? "Envoi..." : "TEST SMS"}
+                    </button>
+                    {testSmsResult && (
+                      <span className={`text-xs font-medium ${testSmsResult.success ? "text-green-600" : "text-red-600"}`}>
+                        {testSmsResult.message}
+                      </span>
+                    )}
                   </dd>
                 </div>
                 <div>
