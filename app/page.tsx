@@ -619,7 +619,7 @@ export default function HomePage() {
         // Note pour le dernier renouvellement (plus petite et compacte)
         if (isLastRenewal) {
           yOffset = yOffset + nomSize * 0.9;
-          page.drawText("⚠️ DERNIÈRE ORDO", {
+          page.drawText("! DERNIERE ORDO", {
             x: textX,
             y: textY - yOffset,
             size: baseFontSize * 0.7,
