@@ -27,6 +27,7 @@ interface RenewalEvent {
       notes?: string;
       consentement?: boolean;
     };
+    renewals: Array<{ index: number; statut: string; date_delivrance: string | null }>;
   };
 }
 
@@ -69,6 +70,8 @@ export default function HomePage() {
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [showOldRenewals, setShowOldRenewals] = useState(false);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortActive, setSortActive] = useState(false);
 
   const loadSmsTemplates = useCallback(async () => {
     try {
@@ -880,13 +883,22 @@ export default function HomePage() {
                       />
                     </th>
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                      Nom
+                      <button
+                        onClick={() => { setSortActive(true); setSortOrder(sortActive ? (sortOrder === "asc" ? "desc" : "asc") : "asc"); }}
+                        className="flex items-center gap-1 hover:text-gray-700"
+                        title="Trier par nom"
+                      >
+                        Nom {sortActive ? (sortOrder === "asc" ? "↑" : "↓") : "↕"}
+                      </button>
                     </th>
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Prénom
                     </th>
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap hidden sm:table-cell">
                       Téléphone
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap hidden md:table-cell">
+                      Précédent
                     </th>
                     <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       Statut
@@ -906,7 +918,11 @@ export default function HomePage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {renewals.map((renewal) => (
+                  {[...renewals].sort((a, b) => {
+                    if (!sortActive) return 0;
+                    const cmp = a.prescriptionCycle.patient.nom.localeCompare(b.prescriptionCycle.patient.nom, "fr");
+                    return sortOrder === "asc" ? cmp : -cmp;
+                  }).map((renewal) => (
                     <tr key={renewal.id} className={selectedRenewals.has(renewal.id) ? "bg-blue-50" : ""}>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                         <input
@@ -946,6 +962,17 @@ export default function HomePage() {
                       </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">
                         {renewal.prescriptionCycle.patient.telephone_normalise}
+                      </td>
+                      <td className="px-2 sm:px-4 py-3 whitespace-nowrap hidden md:table-cell">
+                        {renewal.index === 0 ? (
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-600">Premier</span>
+                        ) : (() => {
+                          const prev = renewal.prescriptionCycle.renewals.find(r => r.index === renewal.index - 1);
+                          if (!prev) return <span className="text-gray-400 text-xs">—</span>;
+                          if (prev.date_delivrance || prev.statut === "TERMINE")
+                            return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">✓ Récupéré</span>;
+                          return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">⚠ En attente</span>;
+                        })()}
                       </td>
                       <td className="px-2 sm:px-4 py-3 whitespace-nowrap">
                         <span
