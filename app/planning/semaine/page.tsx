@@ -26,6 +26,7 @@ interface RenewalEvent {
       notes?: string;
       consentement?: boolean;
     };
+    renewals: Array<{ index: number; statut: string; date_delivrance: string | null }>;
   };
 }
 
@@ -64,6 +65,10 @@ export default function PlanningSemainePage() {
   const [selectedTemplates, setSelectedTemplates] = useState<Record<string, string>>({});
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortActive, setSortActive] = useState(false);
+  const [selectedRenewals, setSelectedRenewals] = useState<Set<string>>(new Set());
+  const [bulkSmsTemplate, setBulkSmsTemplate] = useState<string>("");
 
   const loadSmsTemplates = useCallback(async () => {
     try {
@@ -161,6 +166,34 @@ export default function PlanningSemainePage() {
       console.error("Erreur envoi SMS:", error);
       alert("Erreur lors de l'envoi du SMS");
     }
+  };
+
+  const sendBulkSms = async () => {
+    const targets = renewals.filter(
+      (r) => selectedRenewals.has(r.id) && r.prescriptionCycle?.patient?.consentement
+    );
+    if (targets.length === 0) {
+      alert("Aucun patient sélectionné avec consentement");
+      return;
+    }
+    if (!confirm(`Envoyer un SMS à ${targets.length} patient(s) ?`)) return;
+    setBulkActionLoading(true);
+    let ok = 0, fail = 0;
+    for (const r of targets) {
+      try {
+        const res = await fetch("/api/sms/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ renewalEventId: r.id, templateId: bulkSmsTemplate || undefined }),
+        });
+        const data = await res.json();
+        data.success ? ok++ : fail++;
+      } catch { fail++; }
+    }
+    setBulkActionLoading(false);
+    setSelectedRenewals(new Set());
+    alert(`${ok} SMS envoyé(s), ${fail} échec(s)`);
+    loadWeekRenewals();
   };
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
@@ -410,7 +443,7 @@ export default function PlanningSemainePage() {
         // Date de délivrance (si disponible)
         let yOffset = nomSize * 3.3;
         if (renewal.date_delivrance) {
-          const dateDelivranceText = `✓ Délivré: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
+          const dateDelivranceText = `Delivre: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
           const delivranceSize = baseFontSize * 0.85;
           page.drawText(dateDelivranceText, {
             x: textX,
@@ -705,18 +738,73 @@ export default function PlanningSemainePage() {
                   Détails - {format(selectedDate, "EEEE d MMMM yyyy", { locale: fr })}
                 </h2>
               </div>
+              {/* Barre d'actions groupées */}
+              {selectedRenewals.size > 0 && (
+                <div className="mb-3 flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg no-print">
+                  <span className="text-sm font-medium text-blue-700">{selectedRenewals.size} sélectionné(s)</span>
+                  <select
+                    value={bulkSmsTemplate}
+                    onChange={(e) => setBulkSmsTemplate(e.target.value)}
+                    className="px-2 py-1 text-xs border border-gray-300 rounded text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Template par défaut</option>
+                    {smsTemplates.map((t) => (
+                      <option key={t.id} value={t.id}>{t.libelle}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={sendBulkSms}
+                    disabled={bulkActionLoading}
+                    className="px-3 py-1 text-xs font-medium text-white bg-purple-600 rounded hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    {bulkActionLoading ? "Envoi..." : "📱 Envoyer SMS"}
+                  </button>
+                  <button
+                    onClick={() => setSelectedRenewals(new Set())}
+                    className="px-3 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50"
+                  >
+                    Désélectionner
+                  </button>
+                </div>
+              )}
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider no-print w-10">
+                        <input
+                          type="checkbox"
+                          checked={(() => {
+                            const dayRenewals = renewalsByDay[format(selectedDate, "yyyy-MM-dd")] || [];
+                            return dayRenewals.length > 0 && dayRenewals.every(r => selectedRenewals.has(r.id));
+                          })()}
+                          onChange={() => {
+                            const dayRenewals = renewalsByDay[format(selectedDate, "yyyy-MM-dd")] || [];
+                            const allSelected = dayRenewals.every(r => selectedRenewals.has(r.id));
+                            const next = new Set(selectedRenewals);
+                            dayRenewals.forEach(r => allSelected ? next.delete(r.id) : next.add(r.id));
+                            setSelectedRenewals(next);
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Nom
+                        <button
+                          onClick={() => { setSortActive(true); setSortOrder(sortActive ? (sortOrder === "asc" ? "desc" : "asc") : "asc"); }}
+                          className="flex items-center gap-1 hover:text-gray-700"
+                          title="Trier par nom"
+                        >
+                          Nom {sortActive ? (sortOrder === "asc" ? "↑" : "↓") : "↕"}
+                        </button>
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Prénom
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Téléphone
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Précédent
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Statut
@@ -736,7 +824,11 @@ export default function PlanningSemainePage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {renewalsByDay[format(selectedDate, "yyyy-MM-dd")]?.map(
+                    {[...(renewalsByDay[format(selectedDate, "yyyy-MM-dd")] || [])].sort((a, b) => {
+                      if (!sortActive) return 0;
+                      const cmp = a.prescriptionCycle.patient.nom.localeCompare(b.prescriptionCycle.patient.nom, "fr");
+                      return sortOrder === "asc" ? cmp : -cmp;
+                    }).map(
                       (renewal) => {
                         const renewalDate = new Date(renewal.date_theorique);
                         const today = new Date();
@@ -745,7 +837,19 @@ export default function PlanningSemainePage() {
                         const isFutureDate = renewalDate > today;
 
                         return (
-                          <tr key={renewal.id}>
+                          <tr key={renewal.id} className={selectedRenewals.has(renewal.id) ? "bg-blue-50" : ""}>
+                            <td className="px-3 py-3 whitespace-nowrap no-print">
+                              <input
+                                type="checkbox"
+                                checked={selectedRenewals.has(renewal.id)}
+                                onChange={() => {
+                                  const next = new Set(selectedRenewals);
+                                  next.has(renewal.id) ? next.delete(renewal.id) : next.add(renewal.id);
+                                  setSelectedRenewals(next);
+                                }}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              />
+                            </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                               <div className="flex items-center gap-2">
                                 <button
@@ -775,6 +879,17 @@ export default function PlanningSemainePage() {
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                               {renewal.prescriptionCycle.patient.telephone_normalise}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {renewal.index === 0 ? (
+                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-600">Premier</span>
+                              ) : (() => {
+                                const prev = renewal.prescriptionCycle.renewals.find(r => r.index === renewal.index - 1);
+                                if (!prev) return <span className="text-gray-400 text-xs">—</span>;
+                                if (prev.date_delivrance || prev.statut === "TERMINE")
+                                  return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">✓ Récupéré</span>;
+                                return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">⚠ En attente</span>;
+                              })()}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">
                               <span

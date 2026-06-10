@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { startOfDay, endOfDay, isToday } from "date-fns";
+import { startOfDay, endOfDay } from "date-fns";
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -39,6 +39,10 @@ export async function GET(request: NextRequest) {
         prescriptionCycle: {
           include: {
             patient: true,
+            renewals: {
+              orderBy: { index: "asc" },
+              select: { index: true, statut: true, date_delivrance: true },
+            },
           },
         },
       },
