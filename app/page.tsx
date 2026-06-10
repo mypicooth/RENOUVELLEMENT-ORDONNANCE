@@ -438,7 +438,7 @@ export default function HomePage() {
       // Date de délivrance (si disponible) - légèrement réduite
       let yOffset = nomSize * 3.3;
       if (renewal.date_delivrance) {
-        const dateDelivranceText = `✓ Délivré: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
+        const dateDelivranceText = `Delivre: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
         const delivranceSize = baseFontSize * 0.85;
         page.drawText(dateDelivranceText, {
           x: textX,
@@ -594,7 +594,7 @@ export default function HomePage() {
         // Date de délivrance (si disponible) - légèrement réduite
         let yOffset = nomSize * 3.3;
         if (renewal.date_delivrance) {
-          const dateDelivranceText = `✓ Délivré: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
+          const dateDelivranceText = `Delivre: ${format(new Date(renewal.date_delivrance), "dd/MM/yyyy", { locale: fr })}`;
           const delivranceSize = baseFontSize * 0.85;
           page.drawText(dateDelivranceText, {
             x: textX,
